@@ -31,7 +31,7 @@ const SAMPLE_TEXTS = [
   },
 ];
 
-
+function CopyBtn({ text, label }) {
   const [copied, setCopied] = useState(false);
   return (
     <Button

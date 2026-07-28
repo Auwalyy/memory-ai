@@ -166,7 +166,7 @@ The festival reinforces the Yoruba belief that death is not the end — the ance
 
 Elders say: "Iku pa eniyan, ko pa oruko" — death kills a person, but not their name. The Egungun tradition ensures that names and wisdom live on.`;
 
-
+export default function UploadPage() {
   const { t } = useTranslation();
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
