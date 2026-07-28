@@ -37,7 +37,42 @@ const TYPE_LABELS = {
   song: 'Song', poem: 'Poem', historical_event: 'Historical', community_history: 'Community', other: 'Other',
 };
 
-function CopyBtn({ text, size = 'sm' }) {
+const SAMPLE_STORIES = [
+  {
+    title: 'Mbe na Nnụnụ — The Tortoise and the Birds',
+    content: 'Long ago, Mbe the tortoise heard that the birds were invited to a feast in the sky. He begged each bird for one feather until he had enough to fly. Before they left, he told everyone: "In the sky, we must use new names. My name shall be All of You." When the feast was served and the host said the food was for all of you, Mbe ate everything alone. The angry birds took back their feathers. Mbe fell from the sky and his shell cracked into pieces — which is why the tortoise shell has many lines today.',
+    language: 'igbo',
+    knowledgeType: 'folktale',
+    community: 'Igbo',
+    source: 'Elder Chukwuemeka Obi, oral tradition',
+  },
+  {
+    title: 'Hausa Proverb — The Value of Patience',
+    content: 'Hausa elders say: "Hankali ya fi karfi" — patience is stronger than force. This wisdom comes from the story of the farmer who tried to pull his crops out of the ground to make them grow faster, only to destroy them. His neighbour who waited and tended carefully harvested three times as much. The proverb is used to counsel young people against rushing important decisions, especially in marriage, business, and conflict resolution.',
+    language: 'hausa',
+    knowledgeType: 'proverb',
+    community: 'Hausa',
+    source: 'Kano oral tradition',
+  },
+  {
+    title: 'The New Yam Festival — Igbo Iri Ji',
+    content: 'Iri Ji, the New Yam Festival, is one of the most important ceremonies in Igboland. Held at the end of the farming season (August–September), it marks the time when the new yam harvest is ready to eat. No one may eat the new yam before the Eze (king) or eldest man in the community performs the first tasting ceremony. He offers the first yam to Ani (earth goddess) and the ancestors, then eats publicly to declare the harvest open. The community then feasts, dances, and gives thanks. Yam is not just food in Igbo culture — it is the king of crops, a symbol of wealth, masculinity, and the covenant between the living and the ancestors.',
+    language: 'igbo',
+    knowledgeType: 'ceremony',
+    community: 'Igbo',
+    source: 'Anambra State oral tradition',
+  },
+  {
+    title: 'Sango — Yoruba God of Thunder',
+    content: 'Sango was the third Alaafin (king) of the Oyo Empire, a real historical figure who became deified after his death. He was known for his fierce temper, his love of drumming, and his supernatural ability to call down lightning. According to oral tradition, Sango accidentally destroyed his own palace with lightning while experimenting with a powerful charm. Overcome with grief, he walked into the forest and disappeared — some say he hanged himself, others say he ascended to the sky. His followers declared: "Oba Koso" — the king did not hang. Today, Sango is worshipped across Yorubaland and in the African diaspora (as Shango in Trinidad, Cuba, and Brazil). His symbol is the double-headed axe (oshe), and his colours are red and white.',
+    language: 'yoruba',
+    knowledgeType: 'oral_history',
+    community: 'Yoruba, Oyo',
+    source: 'Oyo oral tradition and Ifa corpus',
+  },
+];
+
+
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -93,6 +128,7 @@ function StoryListItem({ story, onDelete }) {
 
 export default function StoriesPage() {
   const [open, setOpen] = useState(false);
+  const [sampleIdx, setSampleIdx] = useState(0);
   const [langFilter, setLangFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [sortBy, setSortBy] = useState('-createdAt');
@@ -346,6 +382,23 @@ export default function StoriesPage() {
           <DialogHeader>
             <DialogTitle className="font-serif text-xl">Share Indigenous Knowledge</DialogTitle>
           </DialogHeader>
+          {/* Sample data picker */}
+          <div className="flex items-center gap-2 flex-wrap pt-1 pb-2 border-b border-border/50">
+            <span className="text-xs text-muted-foreground shrink-0">Try a sample:</span>
+            {SAMPLE_STORIES.map((s, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => {
+                  setSampleIdx(i);
+                  reset(SAMPLE_STORIES[i]);
+                }}
+                className={`filter-chip text-xs ${sampleIdx === i && Object.values(SAMPLE_STORIES[i]).some(v => v) ? 'active' : ''}`}
+              >
+                {s.title.split(' — ')[0]}
+              </button>
+            ))}
+          </div>
           <form onSubmit={handleSubmit((d) => createMutation.mutate(d))} className="space-y-4 mt-2">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Title</label>

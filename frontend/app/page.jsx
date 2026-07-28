@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { ArrowRight, BookOpen, Mic, Globe, Sparkles, Users, Archive, Menu, X } from 'lucide-react';
+import { ArrowRight, BookOpen, Mic, Globe, Sparkles, Users, Archive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -57,8 +56,6 @@ const stats = [
 ];
 
 export default function HomePage() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
@@ -70,8 +67,8 @@ export default function HomePage() {
             </div>
             <span className="font-serif font-bold text-lg">MemoryAI Nigeria</span>
           </Link>
-          {/* Desktop nav */}
-          <div className="hidden sm:flex items-center gap-3">
+          {/* Nav buttons — always visible */}
+          <div className="flex items-center gap-2">
             <Link href="/login">
               <Button variant="outline" size="sm">Sign in</Button>
             </Link>
@@ -79,33 +76,7 @@ export default function HomePage() {
               <Button size="sm" className="gradient-brand text-white border-0">Get Started</Button>
             </Link>
           </div>
-          {/* Mobile hamburger */}
-          <button
-            className="sm:hidden icon-btn"
-            onClick={() => setMobileMenuOpen((v) => !v)}
-            aria-label="Toggle menu"
-          >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
         </div>
-        {/* Mobile dropdown */}
-        <AnimatePresence>
-          {mobileMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="sm:hidden border-t border-border/50 bg-card/95 backdrop-blur-md px-6 py-4 flex flex-col gap-3"
-            >
-              <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                <Button variant="outline" className="w-full">Sign in</Button>
-              </Link>
-              <Link href="/register" onClick={() => setMobileMenuOpen(false)}>
-                <Button className="w-full gradient-brand text-white border-0">Get Started</Button>
-              </Link>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </nav>
 
       {/* Hero */}

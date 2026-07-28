@@ -9,7 +9,8 @@
     "test": "jest --config jest.config.json --runInBand --forceExit",
     "test:watch": "jest --config jest.config.json --watch",
     "lint": "eslint src/",
-    "lint:fix": "eslint src/ --fix"
+    "lint:fix": "eslint src/ --fix",
+    "seed": "node src/seed.js"
   },
   "nodemonConfig": {
     "watch": [

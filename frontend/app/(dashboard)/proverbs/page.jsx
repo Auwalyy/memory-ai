@@ -37,7 +37,36 @@ const fadeUp = {
 
 const LANG_EMOJI = { hausa: '🟢', yoruba: '🔵', igbo: '🟣', english: '⚪', pidgin: '🟠' };
 
-function CopyBtn({ text }) {
+const SAMPLE_EXTRACT_TEXT = `In Yoruba culture, elders say "Ọmọ tí a kò kọ́ ni yóò ta ilé tì" — a child that is not taught will sell the family home. This reflects the deep belief that education and moral upbringing are the foundation of a stable society. Another common saying is "Bi a bá fẹ́ mọ ẹni, a wo ọ̀rẹ́ rẹ̀" — if you want to know a person, look at their friends. The Hausa also have a powerful proverb: "Hankali ya fi ƙarfi" meaning patience is stronger than force. And the Igbo say "Onye wetara oji wetara ndụ" — he who brings kola nut brings life, emphasising the sacred nature of hospitality and welcome.`;
+
+const SAMPLE_PROVERBS = [
+  {
+    original: 'Ọmọ tí a kò kọ́ ni yóò ta ilé tì',
+    englishTranslation: 'A child that is not taught will sell the family home',
+    meaning: 'Children who are not properly educated and instilled with values will eventually destroy what their parents built.',
+    language: 'yoruba',
+    tribe: 'Yoruba',
+    usage: 'Used to emphasise the importance of education and moral upbringing.',
+  },
+  {
+    original: 'Hankali ya fi ƙarfi',
+    englishTranslation: 'Patience is stronger than force',
+    meaning: 'Calm, patient action achieves more than aggressive force. Wisdom and timing matter more than raw power.',
+    language: 'hausa',
+    tribe: 'Hausa',
+    usage: 'Used to counsel against rushing or using aggression when patience would yield better results.',
+  },
+  {
+    original: 'Onye wetara oji wetara ndụ',
+    englishTranslation: 'He who brings kola nut brings life',
+    meaning: 'Hospitality and the act of welcoming guests with kola nut is a sacred, life-affirming act in Igbo culture.',
+    language: 'igbo',
+    tribe: 'Igbo',
+    usage: 'Said at the beginning of ceremonies when kola nut is presented.',
+  },
+];
+
+
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -312,6 +341,17 @@ export default function ProverbsPage() {
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Sample text button */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Try sample:</span>
+                <button
+                  type="button"
+                  onClick={() => setExtractText(SAMPLE_EXTRACT_TEXT)}
+                  className="filter-chip text-xs"
+                >
+                  Nigerian proverbs text
+                </button>
+              </div>
               <Textarea
                 value={extractText}
                 onChange={(e) => setExtractText(e.target.value)}
@@ -398,6 +438,20 @@ export default function ProverbsPage() {
           <DialogHeader>
             <DialogTitle className="font-serif text-xl">Add a Proverb</DialogTitle>
           </DialogHeader>
+          {/* Sample picker */}
+          <div className="flex items-center gap-2 flex-wrap pt-1 pb-2 border-b border-border/50">
+            <span className="text-xs text-muted-foreground shrink-0">Try a sample:</span>
+            {SAMPLE_PROVERBS.map((s, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => reset(s)}
+                className="filter-chip text-xs"
+              >
+                {s.language} proverb {i + 1}
+              </button>
+            ))}
+          </div>
           <form onSubmit={handleSubmit((d) => createMutation.mutate(d))} className="space-y-4 mt-2">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Proverb (original language)</label>
