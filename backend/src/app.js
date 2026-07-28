@@ -33,6 +33,7 @@ app.use(helmet());
 // CORS — allow configured origin plus common dev ports
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  'https://memory-ai-two.vercel.app',
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:3002',
