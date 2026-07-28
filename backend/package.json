@@ -1,0 +1,66 @@
+{
+  "name": "memoryai-nigeria-backend",
+  "version": "1.0.0",
+  "description": "MemoryAI Nigeria — AI-powered Indigenous Knowledge Preservation Platform",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest --config jest.config.json --runInBand --forceExit",
+    "test:watch": "jest --config jest.config.json --watch",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix"
+  },
+  "nodemonConfig": {
+    "watch": [
+      "src"
+    ],
+    "ext": "js,json",
+    "ignore": [
+      "src/tests/*"
+    ],
+    "delay": 500
+  },
+  "keywords": [
+    "nigeria",
+    "indigenous",
+    "knowledge",
+    "ai",
+    "gemma"
+  ],
+  "author": "MemoryAI Nigeria",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.10.0",
+    "compression": "^1.8.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.6.1",
+    "express-validator": "^7.3.2",
+    "helmet": "^8.3.0",
+    "hpp": "^0.2.3",
+    "jsonwebtoken": "^9.0.3",
+    "mammoth": "^1.12.0",
+    "mongoose": "^9.8.1",
+    "morgan": "^1.11.0",
+    "multer": "^2.2.0",
+    "pdf-parse": "^2.4.5",
+    "tesseract.js": "^7.0.0",
+    "uuid": "^14.0.1",
+    "winston": "^3.19.0"
+  },
+  "devDependencies": {
+    "eslint": "^10.8.0",
+    "jest": "^30.4.2",
+    "nodemon": "^3.1.14",
+    "prettier": "^3.9.6",
+    "supertest": "^7.2.2"
+  }
+}
