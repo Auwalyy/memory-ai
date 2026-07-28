@@ -154,13 +154,43 @@ function IngestionResultPanel({ uploadId }) {
   );
 }
 
-export default function UploadPage() {
+const SAMPLE_UPLOAD_TEXT = `Egungun Festival — Yoruba Ancestor Masquerade
+
+The Egungun festival is one of the most sacred ceremonies in Yoruba religion, celebrated across Yorubaland and in the African diaspora. Egungun are masquerades that represent the spirits of ancestors returning to the world of the living to bless, counsel, and sometimes discipline their descendants.
+
+The masquerades are elaborately costumed figures whose identity must never be revealed — to unmask an Egungun is considered a serious taboo that can bring misfortune. The costumes are made of layers of cloth, often passed down through generations, and the Egungun speaks in a disguised voice.
+
+During the festival, the Egungun moves through the community, blessing households, settling disputes, and reminding the living of their obligations to the ancestors. Certain Egungun are known for healing, others for prophecy, and others for entertainment.
+
+The festival reinforces the Yoruba belief that death is not the end — the ancestors remain active participants in community life, and maintaining good relations with them through ritual and ethical living ensures prosperity and protection for the living.
+
+Elders say: "Iku pa eniyan, ko pa oruko" — death kills a person, but not their name. The Egungun tradition ensures that names and wisdom live on.`;
+
+
   const { t } = useTranslation();
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [activePipelines, setActivePipelines] = useState({});
   const [expandedResults, setExpandedResults] = useState({});
   const queryClient = useQueryClient();
+
+  const uploadSampleText = async () => {
+    setUploading(true);
+    try {
+      const blob = new Blob([SAMPLE_UPLOAD_TEXT], { type: 'text/plain' });
+      const file = new File([blob], 'egungun-festival-yoruba.txt', { type: 'text/plain' });
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await api.post('/uploads', formData);
+      const upload = res.data.data?.upload;
+      toast.success('Sample text uploaded — AI processing started');
+      if (upload?._id) setActivePipelines((prev) => ({ ...prev, [upload._id]: true }));
+      queryClient.invalidateQueries({ queryKey: ['uploads'] });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Upload failed');
+    }
+    setUploading(false);
+  };
 
   const { data: uploadsData, isLoading } = useQuery({
     queryKey: ['uploads'],
@@ -259,6 +289,19 @@ export default function UploadPage() {
           <Upload className="w-4 h-4" />
           {uploading ? t('uploading') : t('chooseFiles')}
         </span>
+      </div>
+
+      {/* Sample text shortcut */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">No file? Try a sample:</span>
+        <button
+          type="button"
+          onClick={uploadSampleText}
+          disabled={uploading}
+          className="filter-chip text-xs"
+        >
+          🌿 Egungun Festival (Yoruba text)
+        </button>
       </div>
 
       {/* Upload type info */}

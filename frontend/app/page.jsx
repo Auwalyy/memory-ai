@@ -67,7 +67,6 @@ export default function HomePage() {
             </div>
             <span className="font-serif font-bold text-lg">MemoryAI Nigeria</span>
           </Link>
-          {/* Nav buttons — always visible */}
           <div className="flex items-center gap-2">
             <Link href="/login">
               <Button variant="outline" size="sm">Sign in</Button>

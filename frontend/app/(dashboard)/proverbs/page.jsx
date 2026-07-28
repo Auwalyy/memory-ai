@@ -66,16 +66,11 @@ const SAMPLE_PROVERBS = [
   },
 ];
 
-
+function CopyBtn({ text }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
-      onClick={() => {
-        navigator.clipboard.writeText(text);
-        setCopied(true);
-        toast.success('Copied!');
-        setTimeout(() => setCopied(false), 2000);
-      }}
+      onClick={() => { navigator.clipboard.writeText(text); setCopied(true); toast.success('Copied!'); setTimeout(() => setCopied(false), 2000); }}
       className="icon-btn"
       aria-label="Copy proverb"
     >
@@ -193,11 +188,19 @@ export default function ProverbsPage() {
           <h1 className="font-serif text-2xl sm:text-3xl font-bold">{t('proverbs')}</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Indigenous wisdom preserved in words</p>
         </div>
-        <Button onClick={() => setOpen(true)} className="gradient-brand text-white border-0 gap-2 h-9 shrink-0">
-          <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">{t('addProverb')}</span>
-          <span className="sm:hidden">Add</span>
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline" size="sm" className="gap-1.5 h-9 hidden sm:flex"
+            onClick={() => { reset(SAMPLE_PROVERBS[0]); setOpen(true); }}
+          >
+            ✨ Try Sample
+          </Button>
+          <Button onClick={() => setOpen(true)} className="gradient-brand text-white border-0 gap-2 h-9 shrink-0">
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">{t('addProverb')}</span>
+            <span className="sm:hidden">Add</span>
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="browse">

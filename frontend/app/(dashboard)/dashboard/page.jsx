@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { BookOpen, MessageSquare, Upload, Sparkles, Globe, Network, TrendingUp } from 'lucide-react';
+import { BookOpen, MessageSquare, Upload, Sparkles, Globe, Network, TrendingUp, FlaskConical } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -97,6 +97,25 @@ export default function DashboardPage() {
           </div>
         </motion.div>
       )}
+
+      {/* Sample Data Banner */}
+      <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1.8}>
+        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="w-10 h-10 rounded-xl gradient-brand flex items-center justify-center shrink-0">
+            <FlaskConical className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm">Try with prebuilt sample data</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Each section has ready-made Nigerian stories, proverbs, and uploads — no external source needed.</p>
+          </div>
+          <div className="flex flex-wrap gap-2 shrink-0">
+            <Link href="/stories"><Button size="sm" variant="outline" className="h-8 text-xs gap-1.5"><BookOpen className="w-3.5 h-3.5" /> Stories</Button></Link>
+            <Link href="/proverbs"><Button size="sm" variant="outline" className="h-8 text-xs gap-1.5"><Globe className="w-3.5 h-3.5" /> Proverbs</Button></Link>
+            <Link href="/upload"><Button size="sm" variant="outline" className="h-8 text-xs gap-1.5"><Upload className="w-3.5 h-3.5" /> Upload</Button></Link>
+            <Link href="/chat"><Button size="sm" className="h-8 text-xs gap-1.5 gradient-brand text-white border-0"><MessageSquare className="w-3.5 h-3.5" /> Chat</Button></Link>
+          </div>
+        </div>
+      </motion.div>
 
       {/* Quick Actions */}
       <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={2}>

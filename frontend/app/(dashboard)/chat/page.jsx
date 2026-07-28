@@ -68,10 +68,12 @@ function AIMessage({ content }) {
 }
 
 const SUGGESTED_PROMPTS = [
-  'Tell me a Yoruba folktale about wisdom',
+  'Tell me a Yoruba folktale about wisdom and trickery',
   'What are common Hausa proverbs about patience?',
-  'Explain the significance of Igbo New Yam Festival',
-  'What traditional medicines are used in Northern Nigeria?',
+  'Explain the Igbo Ogbanje spirit child tradition',
+  'What is the significance of kola nut in Nigerian ceremonies?',
+  'Compare Yoruba Abiku and Igbo Ogbanje traditions',
+  'Tell me about the ancient Nri Kingdom of Igboland',
 ];
 
 function SessionsList({ sessions, sessionsLoading, activeSessionId, onSelect, onDelete, onNew, isPending, t }) {

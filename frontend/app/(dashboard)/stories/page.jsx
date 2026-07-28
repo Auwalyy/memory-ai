@@ -72,7 +72,7 @@ const SAMPLE_STORIES = [
   },
 ];
 
-
+function CopyBtn({ text }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -205,6 +205,12 @@ export default function StoriesPage() {
           <Button variant="outline" size="sm" className="gap-1.5 h-9 hidden sm:flex" onClick={exportStories}>
             <Download className="w-3.5 h-3.5" /> Export
           </Button>
+          <Button
+            variant="outline" size="sm" className="gap-1.5 h-9 hidden sm:flex"
+            onClick={() => { reset(SAMPLE_STORIES[0]); setSampleIdx(0); setOpen(true); }}
+          >
+            ✨ Try Sample
+          </Button>
           <Button onClick={() => setOpen(true)} className="gradient-brand text-white border-0 gap-2 h-9">
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">{t('addStory')}</span>
@@ -315,6 +321,14 @@ export default function StoriesPage() {
           <p className="text-sm">
             {hasFilters ? 'Try adjusting your filters.' : 'Be the first to share indigenous knowledge.'}
           </p>
+          {!hasFilters && (
+            <button
+              className="mt-3 text-sm text-primary hover:underline"
+              onClick={() => { reset(SAMPLE_STORIES[0]); setSampleIdx(0); setOpen(true); }}
+            >
+              ✨ Load a sample story to try
+            </button>
+          )}
           {hasFilters && (
             <button
               className="mt-3 text-sm text-primary hover:underline"

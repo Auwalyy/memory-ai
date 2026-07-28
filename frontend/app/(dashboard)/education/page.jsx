@@ -13,7 +13,25 @@ import api from '@/lib/api';
 import { SUPPORTED_LANGUAGES } from '@/lib/constants';
 import { useTranslation } from '@/hooks/useTranslation';
 
-function CopyBtn({ text, label = 'Copy' }) {
+const SAMPLE_TEXTS = [
+  {
+    label: 'Tortoise & Birds (Igbo)',
+    language: 'igbo',
+    text: `Long ago, Mbe the tortoise heard that the birds were invited to a feast in the sky. He begged each bird for one feather until he had enough to fly. Before they left, he told everyone: "In the sky, we must use new names. My name shall be All of You." When the feast was served and the host said the food was for all of you, Mbe ate everything alone. The angry birds took back their feathers. Mbe fell from the sky and his shell cracked into pieces — which is why the tortoise shell has many lines today. This story teaches that greed and deception lead to one's own downfall.`,
+  },
+  {
+    label: 'Sango God of Thunder (Yoruba)',
+    language: 'yoruba',
+    text: `Sango was the third Alaafin of the Oyo Empire, a real historical figure who became deified after his death. He was known for his fierce temper, his love of drumming, and his supernatural ability to call down lightning. According to oral tradition, Sango accidentally destroyed his own palace with lightning while experimenting with a powerful charm. Overcome with grief, he walked into the forest and disappeared. His followers declared: "Oba Koso" — the king did not hang. Today, Sango is worshipped across Yorubaland and in the African diaspora as Shango in Trinidad, Cuba, and Brazil. His symbol is the double-headed axe (oshe), and his colours are red and white.`,
+  },
+  {
+    label: 'Hausa Patience Proverb',
+    language: 'hausa',
+    text: `Hausa elders say: "Hankali ya fi karfi" — patience is stronger than force. This wisdom comes from the story of the farmer who tried to pull his crops out of the ground to make them grow faster, only to destroy them. His neighbour who waited and tended carefully harvested three times as much. Another proverb says "Mutum ya fi dukiyarsa" — a person is worth more than their wealth. And "Duk wanda ya yi gaba da ruwa, ruwa zai yi gaba da shi" — whoever fights against water, water will fight against them. These proverbs guide community life in northern Nigeria.`,
+  },
+];
+
+
   const [copied, setCopied] = useState(false);
   return (
     <Button

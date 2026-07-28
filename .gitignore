@@ -42,6 +42,8 @@ Thumbs.db
 *.swp
 *.swo
 
-# Uploads (local dev)
-uploads/
+# Uploads (local dev) — only top-level, not feature directories
+/uploads/
+/backend/uploads/
+/frontend/uploads/
 temp/
