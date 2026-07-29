@@ -5,72 +5,143 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
-  LayoutDashboard, BookOpen, MessageSquare, Upload, GraduationCap,
-  Search, Bookmark, Globe, LogOut, Moon, Sun, Menu, Network, UserCircle,
+  LayoutDashboard, BookOpen, Upload, MessageSquare, Network,
+  Sparkles, Search, User, BarChart2, ClipboardList, Users,
+  Settings, LogOut, Moon, Sun, Menu, Globe, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useAuth } from '@/hooks/useAuth';
-import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
 
-const NAV_ITEMS = [
-  { href: '/dashboard', icon: LayoutDashboard, labelKey: 'dashboard' },
-  { href: '/stories',   icon: BookOpen,        labelKey: 'stories' },
-  { href: '/proverbs',  icon: Globe,           labelKey: 'proverbs' },
-  { href: '/chat',      icon: MessageSquare,   labelKey: 'chat' },
-  { href: '/upload',    icon: Upload,          labelKey: 'upload' },
-  { href: '/graph',     icon: Network,         labelKey: 'graph' },
-  { href: '/education', icon: GraduationCap,   labelKey: 'education' },
-  { href: '/search',    icon: Search,          labelKey: 'search' },
-  { href: '/bookmarks', icon: Bookmark,        labelKey: 'bookmarks' },
-  { href: '/profile',   icon: UserCircle,      labelKey: 'profile' },
+// ── Nav structure ────────────────────────────────────────────────────────────
+
+const MAIN_NAV = [
+  { href: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard' },
+  {
+    label: 'Knowledge Library',
+    icon: BookOpen,
+    children: [
+      { href: '/stories',   label: 'Stories' },
+      { href: '/proverbs',  label: 'Proverbs' },
+      { href: '/knowledge', label: 'All Categories' },
+    ],
+  },
+  { href: '/upload',        icon: Upload,        label: 'Upload Knowledge' },
+  { href: '/chat',          icon: MessageSquare, label: 'AI Cultural Chat' },
+  { href: '/graph',         icon: Network,       label: 'Knowledge Graph' },
+  { href: '/education',     icon: Sparkles,      label: 'Content Studio' },
+  { href: '/search',        icon: Search,        label: 'Search' },
+  { href: '/contributions', icon: User,          label: 'My Contributions' },
 ];
 
-// Bottom tab bar items (most used, shown on mobile)
+const ANALYTICS_NAV = [
+  { href: '/analytics', icon: BarChart2, label: 'Analytics' },
+];
+
+const ADMIN_NAV = [
+  { href: '/admin/reviews', icon: ClipboardList, label: 'Pending Reviews' },
+  { href: '/admin/users',   icon: Users,         label: 'Users' },
+  { href: '/profile',       icon: Settings,      label: 'Settings' },
+];
+
+// Bottom tab bar — 5 most used
 const BOTTOM_TABS = [
-  { href: '/dashboard', icon: LayoutDashboard, labelKey: 'dashboard' },
-  { href: '/stories',   icon: BookOpen,        labelKey: 'stories' },
-  { href: '/chat',      icon: MessageSquare,   labelKey: 'chat' },
-  { href: '/search',    icon: Search,          labelKey: 'search' },
-  { href: '/upload',    icon: Upload,          labelKey: 'upload' },
+  { href: '/dashboard',     icon: LayoutDashboard, label: 'Home' },
+  { href: '/knowledge',     icon: BookOpen,        label: 'Library' },
+  { href: '/chat',          icon: MessageSquare,   label: 'AI Chat' },
+  { href: '/search',        icon: Search,          label: 'Search' },
+  { href: '/upload',        icon: Upload,          label: 'Upload' },
 ];
 
-function NavLink({ item, onClick }) {
+// ── NavLink ──────────────────────────────────────────────────────────────────
+
+function NavLink({ href, icon: Icon, label, onClick, indent = false }) {
   const pathname = usePathname();
-  const { t } = useTranslation();
   const isActive =
-    item.href === '/dashboard'
+    href === '/dashboard'
       ? pathname === '/dashboard'
-      : pathname === item.href || pathname.startsWith(item.href + '/');
+      : pathname === href || pathname.startsWith(href + '/');
 
   return (
-    <Link href={item.href} onClick={onClick}>
+    <Link href={href} onClick={onClick}>
       <div className={cn(
-        'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150',
+        'flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-150',
+        indent && 'ml-6 text-xs',
         isActive
           ? 'bg-primary/10 text-primary'
           : 'text-muted-foreground hover:bg-muted hover:text-foreground'
       )}>
-        <item.icon className="w-4 h-4 shrink-0" />
-        <span>{t(item.labelKey)}</span>
+        {Icon && <Icon className="w-4 h-4 shrink-0" />}
+        <span>{label}</span>
       </div>
     </Link>
   );
 }
 
+// ── Collapsible group ────────────────────────────────────────────────────────
+
+function NavGroup({ item, onClick }) {
+  const pathname = usePathname();
+  const isChildActive = item.children?.some(
+    (c) => pathname === c.href || pathname.startsWith(c.href + '/')
+  );
+  const [open, setOpen] = useState(isChildActive);
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          'w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-150',
+          isChildActive
+            ? 'bg-primary/10 text-primary'
+            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+        )}
+      >
+        <item.icon className="w-4 h-4 shrink-0" />
+        <span className="flex-1 text-left">{item.label}</span>
+        {open
+          ? <ChevronDown className="w-3.5 h-3.5 shrink-0" />
+          : <ChevronRight className="w-3.5 h-3.5 shrink-0" />
+        }
+      </button>
+      {open && (
+        <div className="mt-0.5 space-y-0.5">
+          {item.children.map((child) => (
+            <NavLink key={child.href} href={child.href} label={child.label} onClick={onClick} indent />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Section label ────────────────────────────────────────────────────────────
+
+function SectionLabel({ children }) {
+  return (
+    <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 select-none">
+      {children}
+    </p>
+  );
+}
+
+// ── Sidebar content ──────────────────────────────────────────────────────────
+
 function SidebarContent({ onNavigate }) {
   const { user, logout } = useAuth();
-  const { t } = useTranslation();
   const { theme, setTheme } = useTheme();
   const router = useRouter();
 
+  const isAdmin = user?.role === 'admin' || user?.role === 'moderator';
+
   return (
-    <div className="flex flex-col h-full">
-      <div className="px-5 py-4">
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Logo */}
+      <div className="px-4 py-4 shrink-0">
         <Link href="/" className="flex items-center gap-2.5" onClick={onNavigate}>
           <div className="w-8 h-8 rounded-xl gradient-brand flex items-center justify-center shrink-0">
             <span className="text-white font-bold text-sm">M</span>
@@ -82,41 +153,71 @@ function SidebarContent({ onNavigate }) {
         </Link>
       </div>
 
-      <Separator />
+      <div className="h-px bg-border/60 shrink-0" />
 
-      <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto" aria-label="Main navigation">
-        {NAV_ITEMS.map((item) => (
-          <NavLink key={item.href} item={item} onClick={onNavigate} />
+      {/* Scrollable nav */}
+      <nav className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5 scrollbar-none" aria-label="Main navigation">
+
+        <SectionLabel>Main Navigation</SectionLabel>
+        {MAIN_NAV.map((item) =>
+          item.children ? (
+            <NavGroup key={item.label} item={item} onClick={onNavigate} />
+          ) : (
+            <NavLink key={item.href} href={item.href} icon={item.icon} label={item.label} onClick={onNavigate} />
+          )
+        )}
+
+        <SectionLabel>Analytics</SectionLabel>
+        {ANALYTICS_NAV.map((item) => (
+          <NavLink key={item.href} href={item.href} icon={item.icon} label={item.label} onClick={onNavigate} />
         ))}
+
+        {isAdmin && (
+          <>
+            <SectionLabel>Administration</SectionLabel>
+            {ADMIN_NAV.map((item) => (
+              <NavLink key={item.href} href={item.href} icon={item.icon} label={item.label} onClick={onNavigate} />
+            ))}
+          </>
+        )}
+
+        {/* Settings always visible for non-admins */}
+        {!isAdmin && (
+          <NavLink href="/profile" icon={Settings} label="Settings" onClick={onNavigate} />
+        )}
       </nav>
 
-      <Separator />
+      <div className="h-px bg-border/60 shrink-0" />
 
-      <div className="p-3 space-y-1">
+      {/* Footer */}
+      <div className="p-2 space-y-0.5 shrink-0">
         <button
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
         >
-          {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          {theme === 'dark' ? t('lightMode') : t('darkMode')}
+          {theme === 'dark'
+            ? <Sun className="w-4 h-4 shrink-0" />
+            : <Moon className="w-4 h-4 shrink-0" />
+          }
+          {theme === 'dark' ? 'Light mode' : 'Dark mode'}
         </button>
 
-        <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted transition-colors">
-          <Avatar className="w-7 h-7 shrink-0">
+        <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg hover:bg-muted transition-colors">
+          <Avatar className="w-6 h-6 shrink-0">
             <AvatarFallback className="gradient-brand text-white text-xs font-bold">
               {user?.name?.charAt(0)?.toUpperCase() || 'U'}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate leading-none mb-0.5">{user?.name}</p>
-            <p className="text-xs text-muted-foreground truncate capitalize leading-none">
-              {user?.preferredLanguage || 'english'}
+            <p className="text-xs font-medium truncate leading-none mb-0.5">{user?.name}</p>
+            <p className="text-[10px] text-muted-foreground truncate capitalize leading-none">
+              {user?.role || 'user'}
             </p>
           </div>
           <Button
             variant="ghost"
             size="icon"
-            className="w-7 h-7 shrink-0 text-muted-foreground hover:text-destructive"
+            className="w-6 h-6 shrink-0 text-muted-foreground hover:text-destructive"
             onClick={async () => { await logout(); router.push('/'); }}
             aria-label="Logout"
           >
@@ -128,12 +229,13 @@ function SidebarContent({ onNavigate }) {
   );
 }
 
+// ── Layout ───────────────────────────────────────────────────────────────────
+
 export default function DashboardLayout({ children }) {
   const { isAuthenticated, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { t } = useTranslation();
 
   useEffect(() => {
     if (!loading && !isAuthenticated) router.push('/login');
@@ -159,7 +261,10 @@ export default function DashboardLayout({ children }) {
       </a>
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-56 h-screen sticky top-0 flex-col border-r border-border/60 bg-card/80 backdrop-blur-sm shrink-0" aria-label="Main navigation">
+      <aside
+        className="hidden md:flex w-56 h-screen sticky top-0 flex-col border-r border-border/60 bg-card/80 backdrop-blur-sm shrink-0"
+        aria-label="Main navigation"
+      >
         <SidebarContent />
       </aside>
 
@@ -217,7 +322,7 @@ export default function DashboardLayout({ children }) {
               aria-current={isActive ? 'page' : undefined}
             >
               <item.icon className={cn('w-5 h-5', isActive && 'stroke-[2.5]')} />
-              <span className="text-[10px] font-medium truncate">{t(item.labelKey)}</span>
+              <span className="text-[10px] font-medium truncate">{item.label}</span>
             </Link>
           );
         })}

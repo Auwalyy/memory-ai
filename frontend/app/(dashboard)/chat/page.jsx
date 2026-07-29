@@ -237,10 +237,13 @@ export default function ChatPage() {
               <div className="w-14 h-14 rounded-2xl gradient-brand flex items-center justify-center mb-4">
                 <Sparkles className="w-7 h-7 text-white" />
               </div>
-              <h1 className="font-serif text-xl sm:text-2xl font-bold mb-2">Chat with Indigenous Knowledge</h1>
-              <p className="text-muted-foreground max-w-xs text-sm mb-6">
+              <h1 className="font-serif text-xl sm:text-2xl font-bold mb-2">AI Cultural Chat</h1>
+              <p className="text-muted-foreground max-w-xs text-sm mb-2">
                 Ask Gemma AI about Nigerian culture, traditions, proverbs, and preserved wisdom.
               </p>
+              <div className="flex items-center gap-1.5 mb-6 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
+                <span className="text-xs font-medium text-primary">🌍 Language is no longer a barrier</span>
+              </div>
               <Button
                 onClick={() => newSessionMutation.mutate()}
                 className="gradient-brand text-white border-0 gap-2 mb-6"
@@ -293,7 +296,7 @@ export default function ChatPage() {
               >
                 {messages.length === 0 && !sendMutation.isPending && (
                   <div className="text-center py-8">
-                    <p className="text-muted-foreground text-sm mb-4">Ask anything about Nigerian indigenous knowledge.</p>
+                    <p className="text-muted-foreground text-sm mb-4">Ask in any language — upload in Hausa, ask in English, switch to Yoruba.</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-sm mx-auto">
                       {SUGGESTED_PROMPTS.map((prompt) => (
                         <button

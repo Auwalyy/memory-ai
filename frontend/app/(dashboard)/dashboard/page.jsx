@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { BookOpen, MessageSquare, Upload, Sparkles, Globe, Network, TrendingUp, FlaskConical } from 'lucide-react';
+import { BookOpen, MessageSquare, Upload, Sparkles, Globe, Network, TrendingUp, FlaskConical, BarChart2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -35,10 +35,12 @@ export default function DashboardPage() {
   const totalStories = statsData?.storyStats?.reduce((sum, s) => sum + s.count, 0) ?? 0;
 
   const quickActions = [
-    { href: '/upload', icon: Upload, label: t('uploadKnowledge'), desc: t('uploadDesc'), color: 'text-blue-500' },
-    { href: '/stories', icon: BookOpen, label: t('writeStory'), desc: t('writeDesc'), color: 'text-green-500' },
-    { href: '/chat', icon: MessageSquare, label: t('chatWithAI'), desc: t('chatDesc'), color: 'text-purple-500' },
-    { href: '/education', icon: Sparkles, label: t('generateLesson'), desc: t('generateDesc'), color: 'text-orange-500' },
+    { href: '/upload',    icon: Upload,        label: t('uploadKnowledge'), desc: t('uploadDesc'),    color: 'text-blue-500'   },
+    { href: '/stories',   icon: BookOpen,      label: t('writeStory'),      desc: t('writeDesc'),     color: 'text-green-500'  },
+    { href: '/chat',      icon: MessageSquare, label: 'AI Cultural Chat',    desc: 'Cross-language AI conversations', color: 'text-purple-500' },
+    { href: '/education', icon: Sparkles,      label: 'Content Studio',     desc: 'Lessons, stories, podcasts', color: 'text-orange-500' },
+    { href: '/graph',     icon: Network,       label: t('knowledgeGraph'),  desc: 'Explore connections',        color: 'text-indigo-500' },
+    { href: '/analytics', icon: BarChart2,     label: 'Analytics',          desc: 'Platform insights',          color: 'text-rose-500'   },
   ];
 
   const summaryCards = [
@@ -120,7 +122,7 @@ export default function DashboardPage() {
       {/* Quick Actions */}
       <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={2}>
         <h2 className="font-semibold text-lg mb-4">{t('quickActions')}</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {quickActions.map((action, i) => (
             <Link key={action.href} href={action.href}>
               <Card className="border-border/50 hover:border-primary/30 hover:shadow-md transition-all duration-200 cursor-pointer h-full">
