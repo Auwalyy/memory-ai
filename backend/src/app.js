@@ -27,6 +27,9 @@ const graphRoutes = require('./features/graph/graph.routes');
 
 const app = express();
 
+// Trust Render/Vercel reverse proxy — required for express-rate-limit behind X-Forwarded-For
+app.set('trust proxy', 1);
+
 // Security headers
 app.use(helmet());
 

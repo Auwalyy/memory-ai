@@ -14,7 +14,11 @@ import { useAuth } from '@/hooks/useAuth';
 const schema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Must contain at least one number'),
   community: z.string().optional(),
   state: z.string().optional(),
 });
@@ -57,8 +61,11 @@ export default function RegisterPage() {
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Password</label>
-            <Input {...register('password')} type="password" placeholder="Min. 8 characters" />
-            {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
+            <Input {...register('password')} type="password" placeholder="Min. 8 chars, uppercase, number" />
+            {errors.password
+              ? <p className="text-destructive text-xs">{errors.password.message}</p>
+              : <p className="text-xs text-muted-foreground">Min. 8 characters with uppercase, lowercase &amp; number</p>
+            }
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">

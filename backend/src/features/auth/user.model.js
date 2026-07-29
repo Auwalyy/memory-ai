@@ -57,7 +57,7 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-userSchema.index({ email: 1 });
+// email already indexed via unique:true on the field — no duplicate needed
 userSchema.index({ role: 1 });
 
 userSchema.pre('save', async function () {
