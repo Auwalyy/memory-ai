@@ -28,11 +28,40 @@ const TYPE_ICONS = { image: Image, audio: Mic, document: FileText, text: FileTex
 
 function IngestionResultPanel({ uploadId }) {
   const { t } = useTranslation();
+  const [translateLang, setTranslateLang] = useState('');
+  const [translation, setTranslation] = useState(null);
+  const [translating, setTranslating] = useState(false);
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ['ingestion-result', uploadId],
     queryFn: () => api.get(`/ingestion/${uploadId}/result`).then((r) => r.data.data),
     staleTime: 1000 * 60 * 5,
   });
+
+  const translateContent = async (lang) => {
+    const text = data?.ingestion?.summaries?.medium || data?.ingestion?.summaries?.short;
+    if (!text) return toast.info('No summary to translate yet');
+    setTranslateLang(lang);
+    setTranslating(true);
+    setTranslation(null);
+    try {
+      const res = await api.post('/education/translate-text', { text, targetLanguage: lang });
+      setTranslation(res.data.data?.translation || res.data.data?.translatedText || res.data.data);
+    } catch {
+      // fallback: try stories translate with content
+      try {
+        const res2 = await api.post('/education/lesson', {
+          content: text,
+          language: lang,
+          audience: 'adult',
+        });
+        setTranslation(res2.data.data?.lesson?.introduction || 'Translation not available via this route.');
+      } catch {
+        toast.error('Translation failed');
+      }
+    }
+    setTranslating(false);
+  };
 
   if (isLoading) return <div className="text-xs text-muted-foreground py-2">Loading results…</div>;
   if (isError || !data?.ingestion) return <div className="text-xs text-destructive py-2">Could not load results.</div>;
@@ -148,6 +177,42 @@ function IngestionResultPanel({ uploadId }) {
         <div>
           <p className="section-label mb-1">{t('educationalValue')}</p>
           <p className="text-xs leading-relaxed">{ingestion.aiUnderstanding.educationalValue}</p>
+        </div>
+      )}
+
+      {/* Translate summary */}
+      {(ingestion.summaries?.short || ingestion.summaries?.medium) && (
+        <div className="border-t border-border/50 pt-3">
+          <p className="section-label mb-2">🌍 Translate Summary</p>
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {['hausa', 'yoruba', 'igbo', 'english', 'pidgin'].map((lang) => (
+              <button
+                key={lang}
+                onClick={() => translateContent(lang)}
+                disabled={translating}
+                className={[
+                  'px-2.5 py-1 rounded-full text-xs capitalize border transition-all',
+                  translateLang === lang && translation
+                    ? 'gradient-brand text-white border-transparent'
+                    : 'border-border text-muted-foreground hover:bg-muted',
+                ].join(' ')}
+              >
+                {lang}
+              </button>
+            ))}
+          </div>
+          {translating && (
+            <p className="text-xs text-muted-foreground animate-pulse flex items-center gap-1">
+              <span className="w-3 h-3 rounded-full gradient-brand inline-block animate-pulse" />
+              Gemma is translating to {translateLang}…
+            </p>
+          )}
+          {translation && !translating && (
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-xs leading-relaxed">
+              <p className="font-medium text-primary mb-1 capitalize">{translateLang}:</p>
+              <p>{typeof translation === 'string' ? translation : JSON.stringify(translation)}</p>
+            </div>
+          )}
         </div>
       )}
     </div>

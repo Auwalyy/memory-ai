@@ -1,16 +1,24 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
-import { BookOpen, Globe, Music, Landmark, Flame, Scroll, Heart, Filter } from 'lucide-react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  BookOpen, Globe, Music, Landmark, Flame, Scroll, Heart,
+  Filter, Search, Upload, X, Languages, Check, Sparkles, FileText, Mic, Image,
+} from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import api from '@/lib/api';
-import { LANGUAGE_COLORS } from '@/lib/constants';
+import { LANGUAGE_COLORS, SUPPORTED_LANGUAGES } from '@/lib/constants';
+
+// ── Constants ────────────────────────────────────────────────────────────────
 
 const CATEGORIES = [
   { value: 'all',       label: 'All',        icon: BookOpen  },
@@ -25,43 +33,315 @@ const CATEGORIES = [
 
 const LANGUAGES = ['all', 'hausa', 'yoruba', 'igbo', 'english', 'pidgin'];
 
+// Prebuilt keyword suggestions grouped by theme
+const KEYWORD_GROUPS = [
+  {
+    label: 'Popular Topics',
+    keywords: ['wisdom', 'courage', 'honesty', 'patience', 'love', 'justice', 'community'],
+  },
+  {
+    label: 'Traditions',
+    keywords: ['Egungun', 'Sango', 'Ogun', 'Ifa', 'kola nut', 'masquerade', 'initiation'],
+  },
+  {
+    label: 'Nature & Animals',
+    keywords: ['tortoise', 'spider', 'lion', 'river', 'forest', 'harvest', 'rain'],
+  },
+  {
+    label: 'History',
+    keywords: ['Oyo Empire', 'Benin Kingdom', 'Sokoto Caliphate', 'Nri Kingdom', 'Arochukwu'],
+  },
+];
+
+const UPLOAD_TYPE_ICONS = { image: Image, audio: Mic, document: FileText, text: FileText };
+
 const fadeUp = {
   hidden: { opacity: 0, y: 12 },
-  visible: (i = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.3, delay: i * 0.05 } }),
+  visible: (i = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.3, delay: i * 0.04 } }),
 };
+
+// ── Inline Translate Button ──────────────────────────────────────────────────
+
+function TranslateInline({ storyId, title }) {
+  const [open, setOpen] = useState(false);
+  const [lang, setLang] = useState('hausa');
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      api.post(`/stories/${storyId}/translate`, { targetLanguage: lang }).then((r) => r.data.data.translation),
+    onError: () => toast.error('Translation failed'),
+  });
+
+  return (
+    <div className="mt-2">
+      {!open ? (
+        <button
+          onClick={(e) => { e.preventDefault(); setOpen(true); }}
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+        >
+          <Languages className="w-3 h-3" /> Translate
+        </button>
+      ) : (
+        <div
+          onClick={(e) => e.preventDefault()}
+          className="space-y-2 border-t border-border/40 pt-2 mt-2"
+        >
+          <div className="flex items-center gap-2">
+            <Select value={lang} onValueChange={setLang}>
+              <SelectTrigger className="h-7 text-xs w-28">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SUPPORTED_LANGUAGES.map((l) => (
+                  <SelectItem key={l} value={l} className="text-xs capitalize">{l}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              className="h-7 text-xs gradient-brand text-white border-0 px-3"
+              onClick={() => mutation.mutate()}
+              disabled={mutation.isPending}
+            >
+              {mutation.isPending ? <Sparkles className="w-3 h-3 animate-spin" /> : 'Go'}
+            </Button>
+            <button onClick={() => { setOpen(false); mutation.reset(); }} className="text-muted-foreground hover:text-foreground">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          {mutation.isPending && (
+            <p className="text-xs text-muted-foreground animate-pulse flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-primary" /> Gemma is translating…
+            </p>
+          )}
+          {mutation.data && (
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-2.5 text-xs leading-relaxed">
+              <p className="font-medium text-primary mb-1 capitalize">{lang} translation:</p>
+              <p className="text-foreground">
+                {mutation.data.translation || mutation.data.translatedText || (typeof mutation.data === 'string' ? mutation.data : '')}
+              </p>
+              {mutation.data.culturalNotes?.length > 0 && (
+                <p className="text-muted-foreground mt-1.5 text-[10px]">
+                  📌 {mutation.data.culturalNotes[0]?.culturalNote || mutation.data.culturalNotes[0]}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Story Card ───────────────────────────────────────────────────────────────
+
+function StoryCard({ item, i }) {
+  return (
+    <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={i}>
+      <Card className="border-border/50 hover:border-primary/30 hover:shadow-md transition-all h-full flex flex-col">
+        <CardContent className="p-4 flex flex-col flex-1">
+          <Link href={`/stories/${item._id}`} className="flex-1 block">
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <h3 className="font-semibold text-sm line-clamp-2 flex-1 hover:text-primary transition-colors">
+                {item.title}
+              </h3>
+              <Badge className={`text-xs shrink-0 ${LANGUAGE_COLORS[item.language] || ''}`}>
+                {item.language}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed mb-3">
+              {item.analysis?.summary || item.content?.slice(0, 120) + '…'}
+            </p>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Badge variant="secondary" className="text-xs capitalize">
+                {item.knowledgeType?.replace(/_/g, ' ')}
+              </Badge>
+              {item.analysis?.themes?.slice(0, 2).map((theme) => (
+                <Badge key={theme} variant="outline" className="text-xs">{theme}</Badge>
+              ))}
+            </div>
+          </Link>
+          <TranslateInline storyId={item._id} title={item.title} />
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+// ── Upload Card ──────────────────────────────────────────────────────────────
+
+function UploadCard({ item, i }) {
+  const Icon = UPLOAD_TYPE_ICONS[item.uploadType] || FileText;
+  return (
+    <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={i}>
+      <Card className="border-border/50 hover:border-primary/30 hover:shadow-md transition-all h-full">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+              <Icon className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm truncate">{item.originalName}</p>
+              <p className="text-xs text-muted-foreground capitalize">{item.uploadType}</p>
+            </div>
+            <Badge
+              className={`text-xs shrink-0 ${
+                item.analysisStatus === 'completed'
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                  : 'bg-muted text-muted-foreground'
+              }`}
+            >
+              {item.analysisStatus || 'pending'}
+            </Badge>
+          </div>
+          {item.ingestion?.summaries?.short && (
+            <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed mb-2">
+              {item.ingestion.summaries.short}
+            </p>
+          )}
+          {item.ingestion?.aiUnderstanding?.subThemes?.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {item.ingestion.aiUnderstanding.subThemes.slice(0, 3).map((t) => (
+                <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
+              ))}
+            </div>
+          )}
+          <div className="mt-3">
+            <Link href="/upload">
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                <Upload className="w-3 h-3" /> View in Uploads
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+// ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function KnowledgeLibraryPage() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [language, setLanguage] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [inputValue, setInputValue] = useState('');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['knowledge-library', activeCategory, language],
+    queryKey: ['knowledge-library', activeCategory, language, searchQuery],
     queryFn: () => {
       const params = new URLSearchParams({ limit: '30', sort: '-createdAt' });
       if (activeCategory !== 'all') params.set('knowledgeType', activeCategory);
       if (language !== 'all') params.set('language', language);
+      if (searchQuery) params.set('search', searchQuery);
       return api.get(`/stories?${params}`).then((r) => r.data);
     },
   });
 
-  const items = data?.data || [];
+  const { data: uploadsData, isLoading: uploadsLoading } = useQuery({
+    queryKey: ['knowledge-uploads', language, searchQuery],
+    queryFn: () => api.get('/uploads').then((r) => r.data.data),
+  });
+
+  const stories = data?.data || [];
+  const uploads = (uploadsData || []).filter((u) => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return (
+        u.originalName?.toLowerCase().includes(q) ||
+        u.ingestion?.summaries?.short?.toLowerCase().includes(q) ||
+        u.ingestion?.aiUnderstanding?.subThemes?.some((t) => t.toLowerCase().includes(q))
+      );
+    }
+    return true;
+  });
+
+  const handleSearch = (q) => {
+    setSearchQuery(q);
+    setInputValue(q);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    setInputValue('');
+  };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-5">
+      {/* Header */}
       <motion.div variants={fadeUp} initial="hidden" animate="visible">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-9 h-9 rounded-xl gradient-brand flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl gradient-brand flex items-center justify-center shrink-0">
             <BookOpen className="w-5 h-5 text-white" />
           </div>
           <div>
             <h1 className="font-serif text-2xl sm:text-3xl font-bold">Knowledge Library</h1>
-            <p className="text-muted-foreground text-sm">The public repository of approved indigenous knowledge</p>
+            <p className="text-muted-foreground text-sm">Browse, search, and translate indigenous knowledge</p>
           </div>
         </div>
       </motion.div>
 
-      {/* Category filter */}
+      {/* Search bar */}
       <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <input
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch(inputValue)}
+            placeholder="Search stories, proverbs, traditions… (Enter to search)"
+            className="w-full h-10 pl-9 pr-10 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          {inputValue && (
+            <button
+              onClick={clearSearch}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Prebuilt keyword groups */}
+        <div className="mt-3 space-y-2">
+          {KEYWORD_GROUPS.map((group) => (
+            <div key={group.label} className="flex items-start gap-2 flex-wrap">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 w-24 shrink-0 pt-1">
+                {group.label}
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {group.keywords.map((kw) => (
+                  <button
+                    key={kw}
+                    onClick={() => handleSearch(kw)}
+                    className={[
+                      'px-2.5 py-0.5 rounded-full text-xs border transition-all',
+                      searchQuery === kw
+                        ? 'gradient-brand text-white border-transparent'
+                        : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground bg-background',
+                    ].join(' ')}
+                  >
+                    {kw}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {searchQuery && (
+          <div className="flex items-center gap-2 mt-2">
+            <p className="text-xs text-muted-foreground">
+              Searching for: <span className="font-medium text-foreground">"{searchQuery}"</span>
+            </p>
+            <button onClick={clearSearch} className="text-xs text-primary hover:underline">Clear</button>
+          </div>
+        )}
+      </motion.div>
+
+      {/* Category + Language filters */}
+      <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={2} className="space-y-2">
         <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
           {CATEGORIES.map(({ value, label, icon: Icon }) => (
             <button
@@ -79,10 +359,6 @@ export default function KnowledgeLibraryPage() {
             </button>
           ))}
         </div>
-      </motion.div>
-
-      {/* Language filter */}
-      <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={2}>
         <div className="flex items-center gap-2 flex-wrap">
           <Filter className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
           {LANGUAGES.map((lang) => (
@@ -102,54 +378,78 @@ export default function KnowledgeLibraryPage() {
         </div>
       </motion.div>
 
-      {!isLoading && (
-        <p className="text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">{items.length}</span> items found
-        </p>
-      )}
+      {/* Tabs: Stories | Uploads */}
+      <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={3}>
+        <Tabs defaultValue="stories">
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <TabsList>
+              <TabsTrigger value="stories" className="gap-1.5">
+                <BookOpen className="w-3.5 h-3.5" />
+                Stories & Knowledge
+                {!isLoading && <span className="ml-1 text-xs opacity-60">({stories.length})</span>}
+              </TabsTrigger>
+              <TabsTrigger value="uploads" className="gap-1.5">
+                <Upload className="w-3.5 h-3.5" />
+                Uploaded Documents
+                {!uploadsLoading && <span className="ml-1 text-xs opacity-60">({uploads.length})</span>}
+              </TabsTrigger>
+            </TabsList>
+            <Link href="/upload">
+              <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
+                <Upload className="w-3.5 h-3.5" /> Upload New
+              </Button>
+            </Link>
+          </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {isLoading
-          ? Array(9).fill(0).map((_, i) => <Skeleton key={i} className="h-36 rounded-xl" />)
-          : items.map((item, i) => (
-              <motion.div key={item._id} variants={fadeUp} initial="hidden" animate="visible" custom={i}>
-                <Link href={`/stories/${item._id}`}>
-                  <Card className="border-border/50 hover:border-primary/30 hover:shadow-md transition-all cursor-pointer h-full">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <h3 className="font-semibold text-sm line-clamp-2 flex-1">{item.title}</h3>
-                        <Badge className={`text-xs shrink-0 ${LANGUAGE_COLORS[item.language] || ''}`}>
-                          {item.language}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed mb-3">
-                        {item.analysis?.summary || item.content?.slice(0, 120) + '…'}
-                      </p>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="secondary" className="text-xs capitalize">
-                          {item.knowledgeType?.replace(/_/g, ' ')}
-                        </Badge>
-                        {item.analysis?.themes?.slice(0, 1).map((theme) => (
-                          <Badge key={theme} variant="outline" className="text-xs">{theme}</Badge>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
+          {/* Stories tab */}
+          <TabsContent value="stories">
+            {isLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Array(9).fill(0).map((_, i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
+              </div>
+            ) : stories.length === 0 ? (
+              <div className="text-center py-16 text-muted-foreground">
+                <BookOpen className="w-10 h-10 mx-auto mb-4 opacity-20" />
+                <p className="font-medium mb-1">No stories found</p>
+                <p className="text-sm mb-4">
+                  {searchQuery ? `No results for "${searchQuery}". Try a different keyword.` : 'Try a different filter.'}
+                </p>
+                {searchQuery && (
+                  <Button variant="outline" size="sm" onClick={clearSearch}>Clear Search</Button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {stories.map((item, i) => <StoryCard key={item._id} item={item} i={i} />)}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Uploads tab */}
+          <TabsContent value="uploads">
+            {uploadsLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Array(6).fill(0).map((_, i) => <Skeleton key={i} className="h-36 rounded-xl" />)}
+              </div>
+            ) : uploads.length === 0 ? (
+              <div className="text-center py-16 text-muted-foreground">
+                <Upload className="w-10 h-10 mx-auto mb-4 opacity-20" />
+                <p className="font-medium mb-1">No uploaded documents yet</p>
+                <p className="text-sm mb-4">Upload PDFs, images, audio, or text files to preserve knowledge.</p>
+                <Link href="/upload">
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    <Upload className="w-3.5 h-3.5" /> Upload Knowledge
+                  </Button>
                 </Link>
-              </motion.div>
-            ))}
-      </div>
-
-      {!isLoading && !items.length && (
-        <div className="text-center py-16 text-muted-foreground">
-          <BookOpen className="w-10 h-10 mx-auto mb-4 opacity-20" />
-          <p className="font-medium mb-1">No content found</p>
-          <p className="text-sm mb-4">Try a different category or language filter.</p>
-          <Link href="/upload">
-            <Button variant="outline" size="sm">Upload Knowledge</Button>
-          </Link>
-        </div>
-      )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {uploads.map((item, i) => <UploadCard key={item._id} item={item} i={i} />)}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </motion.div>
     </div>
   );
 }

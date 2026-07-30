@@ -2,24 +2,31 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
+import { useLanguage } from './useLanguage';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { syncLang } = useLanguage();
+
+  const applyUser = useCallback((u) => {
+    setUser(u);
+    if (u?.preferredLanguage) syncLang(u.preferredLanguage);
+  }, [syncLang]);
 
   const fetchMe = useCallback(async () => {
     try {
       const { data } = await api.get('/auth/me');
-      setUser(data.data.user);
+      applyUser(data.data.user);
     } catch {
       setUser(null);
       localStorage.removeItem('accessToken');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [applyUser]);
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
@@ -30,19 +37,18 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });
     localStorage.setItem('accessToken', data.data.accessToken);
-    setUser(data.data.user);
+    applyUser(data.data.user);
     return data.data.user;
   };
 
   const register = async (formData) => {
     const { data } = await api.post('/auth/register', formData);
-    // Registration doesn't return a token — auto-login after register
     const loginRes = await api.post('/auth/login', {
       email: formData.email,
       password: formData.password,
     });
     localStorage.setItem('accessToken', loginRes.data.data.accessToken);
-    setUser(loginRes.data.data.user);
+    applyUser(loginRes.data.data.user);
     return loginRes.data.data.user;
   };
 
@@ -54,7 +60,7 @@ export function AuthProvider({ children }) {
 
   const updateProfile = async (updates) => {
     const { data } = await api.patch('/auth/me', updates);
-    setUser(data.data.user);
+    applyUser(data.data.user);
     return data.data.user;
   };
 

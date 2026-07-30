@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useLanguage } from '@/hooks/useLanguage';
 import { SUPPORTED_LANGUAGES } from '@/lib/constants';
 import { useTheme } from 'next-themes';
 
@@ -45,6 +46,7 @@ const FONT_SIZES = [
 export default function ProfilePage() {
   const { user, updateProfile } = useAuth();
   const { t } = useTranslation();
+  const { lang, setLanguage } = useLanguage();
   const { setTheme } = useTheme();
   const [interests, setInterests] = useState(user?.interests || []);
   const [fontSize, setFontSize] = useState(user?.accessibility?.fontSize || 'normal');
@@ -168,32 +170,30 @@ export default function ProfilePage() {
                   control={control}
                   render={({ field }) => (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      {[...SUPPORTED_LANGUAGES].map((lang) => (
+                      {[...SUPPORTED_LANGUAGES].map((l) => (
                         <button
-                          key={lang}
+                          key={l}
                           type="button"
                           onClick={async () => {
-                            field.onChange(lang);
-                            // Immediately save language so UI switches right away
-                            try {
-                              await updateProfile({ preferredLanguage: lang });
-                            } catch (_) {}
+                            field.onChange(l);
+                            setLanguage(l);
+                            try { await updateProfile({ preferredLanguage: l }); } catch (_) {}
                           }}
                           className={`p-4 rounded-xl border-2 text-left transition-all ${
-                            field.value === lang
+                            lang === l
                               ? 'border-primary bg-primary/5'
                               : 'border-border/50 hover:border-primary/40'
                           }`}
                         >
-                          <div className="font-medium capitalize text-sm">{lang}</div>
+                          <div className="font-medium capitalize text-sm">{l}</div>
                           <div className="text-xs text-muted-foreground mt-0.5">
-                            {lang === 'hausa' && 'Northern Nigeria'}
-                            {lang === 'yoruba' && 'Southwest Nigeria'}
-                            {lang === 'igbo' && 'Southeast Nigeria'}
-                            {lang === 'english' && 'Colonial / Modern'}
-                            {lang === 'pidgin' && 'Nigerian Creole'}
+                            {l === 'hausa' && 'Northern Nigeria'}
+                            {l === 'yoruba' && 'Southwest Nigeria'}
+                            {l === 'igbo' && 'Southeast Nigeria'}
+                            {l === 'english' && 'Colonial / Modern'}
+                            {l === 'pidgin' && 'Nigerian Creole'}
                           </div>
-                          {field.value === lang && (
+                          {lang === l && (
                             <Check className="w-4 h-4 text-primary mt-1" />
                           )}
                         </button>

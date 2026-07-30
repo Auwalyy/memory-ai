@@ -308,7 +308,64 @@ export default function StoryDetailPage() {
         </div>
 
         {/* Story Content */}
-        <TabsContent value="story" className="mt-4">
+        <TabsContent value="story" className="mt-4 space-y-3">
+          {/* Quick Translate bar */}
+          <div className="flex items-center gap-2 flex-wrap p-3 rounded-xl border border-border/50 bg-muted/30">
+            <Globe className="w-4 h-4 text-primary shrink-0" />
+            <span className="text-xs font-medium">Quick Translate:</span>
+            <div className="flex items-center gap-2 flex-wrap flex-1">
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <button
+                  key={lang}
+                  onClick={() => { setTranslateTo(lang); translateMutation.mutate(lang); }}
+                  disabled={translateMutation.isPending}
+                  className={[
+                    'px-2.5 py-1 rounded-full text-xs capitalize border transition-all',
+                    translateTo === lang && translateMutation.data
+                      ? 'gradient-brand text-white border-transparent'
+                      : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground',
+                  ].join(' ')}
+                >
+                  {lang}
+                </button>
+              ))}
+              {translateMutation.isPending && (
+                <span className="text-xs text-muted-foreground animate-pulse flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-primary" /> Translating to {translateTo}…
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Translation result */}
+          {translateMutation.data && !translateMutation.isPending && (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-primary capitalize">🌍 {translateTo} Translation</p>
+                  <CopyButton
+                    text={translateMutation.data.translation || translateMutation.data.translatedText || ''}
+                    label="Copy translation"
+                  />
+                </div>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                  {translateMutation.data.translation || translateMutation.data.translatedText ||
+                    (typeof translateMutation.data === 'string' ? translateMutation.data : '')}
+                </p>
+                {translateMutation.data.culturalNotes?.length > 0 && (
+                  <div className="border-t border-primary/10 pt-2">
+                    <p className="text-xs font-semibold text-muted-foreground mb-1">Cultural Notes</p>
+                    {translateMutation.data.culturalNotes.slice(0, 2).map((note, i) => (
+                      <p key={i} className="text-xs text-muted-foreground">
+                        📌 {typeof note === 'string' ? note : `${note.originalTerm} → ${note.culturalNote}`}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="border-border/50">
             <CardContent className="p-6">
               <div className="flex justify-end gap-2 mb-3">
