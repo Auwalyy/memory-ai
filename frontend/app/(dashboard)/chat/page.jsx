@@ -59,8 +59,26 @@ function CopyButton({ text }) {
 // Strip any leading "User asks..." / "My persona:" / "Goal:" preamble lines
 function cleanAIResponse(raw) {
   if (!raw) return raw;
-  const preamblePattern = /^(user asks?[^\n]*\n|my persona[^\n]*\n|goal[^\n]*\n|\*[^\n]*\n)+/i;
-  return raw.replace(preamblePattern, '').trimStart();
+  const lines = raw.split('\n');
+  const metaPatterns = [
+    /^\s*\*\s*(user (query|asks?|language)|my persona|goal|persona|drafting|answer|disclaimer|context|planning|thought|reasoning|note to self)/i,
+    /^\s*(user (query|asks?|language)|my persona|goal:|persona:|drafting|answer:|disclaimer:|context:|planning:|thought:|reasoning:)/i,
+  ];
+  // Find the first line that is actual content (not meta/planning)
+  let startIdx = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (metaPatterns.some((p) => p.test(lines[i]))) {
+      startIdx = i + 1;
+    } else if (lines[i].trim() && startIdx === i) {
+      break;
+    }
+  }
+  // Also strip any trailing meta block separated by a blank line
+  const cleaned = lines.slice(startIdx).join('\n').trimStart();
+  // Remove any remaining inline meta markers
+  return cleaned
+    .replace(/^\*\s*(User (query|asks?)|Goal|Persona|Drafting|Disclaimer)[^\n]*\n/gim, '')
+    .trimStart();
 }
 
 function AIMessage({ content }) {

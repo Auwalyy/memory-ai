@@ -142,20 +142,11 @@ function IngestionResultPanel({ uploadId, fileName }) {
     setTranslating(true);
     setTranslation(null);
     try {
-      const res = await api.post('/education/translate-text', { text, targetLanguage: lang });
-      setTranslation(res.data.data?.translation || res.data.data?.translatedText || res.data.data);
+      const sourceLanguage = data?.ingestion?.outputLanguage || data?.ingestion?.detectedLanguage || 'english';
+      const res = await api.post('/education/translate-text', { text, targetLanguage: lang, sourceLanguage });
+      setTranslation(res.data.data?.translation || '');
     } catch {
-      // fallback: try stories translate with content
-      try {
-        const res2 = await api.post('/education/lesson', {
-          content: text,
-          language: lang,
-          audience: 'adult',
-        });
-        setTranslation(res2.data.data?.lesson?.introduction || 'Translation not available via this route.');
-      } catch {
-        toast.error('Translation failed');
-      }
+      toast.error('Translation failed');
     }
     setTranslating(false);
   };

@@ -88,4 +88,19 @@ router.post(
   }
 );
 
+// Translate text with cultural context
+router.post(
+  '/translate-text',
+  [body('text').trim().notEmpty().withMessage('Text is required'),
+   body('targetLanguage').trim().notEmpty().withMessage('targetLanguage is required')],
+  validate,
+  async (req, res, next) => {
+    try {
+      const { text, targetLanguage, sourceLanguage = 'english' } = req.body;
+      const result = await gemmaService.translateWithContext(text, sourceLanguage, targetLanguage);
+      sendSuccess(res, { translation: result.translation, culturalNotes: result.culturalNotes });
+    } catch (err) { next(err); }
+  }
+);
+
 module.exports = router;
