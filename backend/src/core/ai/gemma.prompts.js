@@ -71,23 +71,23 @@ const prompts = {
   }),
 
   generateSummaries: (text, language) => ({
-    system: `Nigerian knowledge archivist. Output ONLY valid JSON, no other text. Schema: {"short":"max 25 words","medium":"max 70 words","detailed":"max 180 words"}`,
-    user: `${language}: "${text.slice(0, 1500)}"`,
+    system: `Nigerian knowledge archivist. Write ALL string values in ${language} language. Output ONLY valid JSON, no other text. Schema: {"short":"max 25 words","medium":"max 70 words","detailed":"max 180 words"}`,
+    user: `Text to summarise in ${language}: "${text.slice(0, 1500)}"`,
   }),
 
   extractEntities: (text, language) => ({
-    system: `Nigerian entity extractor. Output ONLY valid JSON, no other text. Schema: {"people":[],"communities":[],"places":[],"languages":[],"animals":[],"foods":[],"festivals":[],"historicalEvents":[],"medicinalPlants":[],"traditions":[],"artifacts":[],"keywords":[]}. Max 5 items per array.`,
-    user: `${language}: "${text.slice(0, 1500)}"`,
+    system: `Nigerian entity extractor. Write ALL string values in ${language} language. Output ONLY valid JSON, no other text. Schema: {"people":[],"communities":[],"places":[],"languages":[],"animals":[],"foods":[],"festivals":[],"historicalEvents":[],"medicinalPlants":[],"traditions":[],"artifacts":[],"keywords":[]}. Max 5 items per array.`,
+    user: `Extract entities in ${language} from: "${text.slice(0, 1500)}"`,
   }),
 
   deepUnderstand: (text, language) => ({
-    system: `Nigerian cultural analyst. Output ONLY valid JSON, no other text. Schema: {"mainTheme":"string","subThemes":["max 4"],"moralLessons":["max 3"],"culturalMeaning":"max 50 words","historicalContext":"max 50 words","educationalValue":"max 30 words","difficultyLevel":"beginner|intermediate|advanced","targetAudience":"string"}`,
-    user: `${language}: "${text.slice(0, 1500)}"`,
+    system: `Nigerian cultural analyst. Write ALL string values in ${language} language. Output ONLY valid JSON, no other text. Schema: {"mainTheme":"string","subThemes":["max 4"],"moralLessons":["max 3"],"culturalMeaning":"max 50 words","historicalContext":"max 50 words","educationalValue":"max 30 words","difficultyLevel":"beginner|intermediate|advanced","targetAudience":"string"}`,
+    user: `Analyse in ${language}: "${text.slice(0, 1500)}"`,
   }),
 
   generateMetadata: (text, language, classification) => ({
-    system: `Nigerian digital archivist. Output ONLY valid JSON, no other text. Schema: {"title":"max 12 words","slug":"kebab-case","tags":["max 6 lowercase"],"category":"string","estimatedReadingTime":"e.g. 3 min","relatedTopics":["max 4"]}`,
-    user: `${language} ${classification?.contentType || ''}: "${text.slice(0, 800)}"`,
+    system: `Nigerian digital archivist. Write ALL string values in ${language} language. Output ONLY valid JSON, no other text. Schema: {"title":"max 12 words","slug":"kebab-case","tags":["max 6 lowercase"],"category":"string","estimatedReadingTime":"e.g. 3 min","relatedTopics":["max 4"]}`,
+    user: `Generate metadata in ${language} for ${classification?.contentType || ''}: "${text.slice(0, 800)}"`,
   }),
 
   discoverRelationships: (newItem, candidates) => ({
