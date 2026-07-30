@@ -3,11 +3,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { BookOpen, MessageSquare, Upload, Sparkles, Globe, Network, TrendingUp, FlaskConical, BarChart2 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useLanguage } from '@/hooks/useLanguage';
 import api from '@/lib/api';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -19,8 +20,22 @@ const fadeUp = {
 };
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const { t } = useTranslation();
+  const { lang, setLanguage } = useLanguage();
+
+  const LANG_OPTIONS = [
+    { code: 'english', flag: '🇬🇧', short: 'EN' },
+    { code: 'hausa',   flag: '🟢',  short: 'HA' },
+    { code: 'yoruba',  flag: '🔵',  short: 'YO' },
+    { code: 'igbo',    flag: '🟣',  short: 'IG' },
+    { code: 'pidgin',  flag: '🟠',  short: 'PD' },
+  ];
+
+  const handleLangChange = async (code) => {
+    setLanguage(code);
+    try { await updateProfile({ preferredLanguage: code }); } catch (_) {}
+  };
 
   const { data: statsData, isLoading: statsLoading } = useQuery({
     queryKey: ['knowledge-stats'],
@@ -54,10 +69,33 @@ export default function DashboardPage() {
     <div className="max-w-6xl mx-auto space-y-8">
       {/* Header */}
       <motion.div variants={fadeUp} initial="hidden" animate="visible">
-        <h1 className="font-serif text-3xl font-bold">
-          {t('welcomeBack')}, {user?.name?.split(' ')[0]} 👋
-        </h1>
-        <p className="text-muted-foreground mt-1">{t('preserving')}</p>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="font-serif text-3xl font-bold">
+              {t('welcomeBack')}, {user?.name?.split(' ')[0]} 👋
+            </h1>
+            <p className="text-muted-foreground mt-1">{t('preserving')}</p>
+          </div>
+          {/* Language switcher */}
+          <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+            {LANG_OPTIONS.map(({ code, flag, short }) => (
+              <button
+                key={code}
+                onClick={() => handleLangChange(code)}
+                title={code.charAt(0).toUpperCase() + code.slice(1)}
+                className={[
+                  'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all border',
+                  lang === code
+                    ? 'bg-primary/10 text-primary border-primary/30'
+                    : 'border-border/50 text-muted-foreground hover:bg-muted hover:text-foreground',
+                ].join(' ')}
+              >
+                <span>{flag}</span>
+                <span>{short}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </motion.div>
 
       {/* Summary Stats */}

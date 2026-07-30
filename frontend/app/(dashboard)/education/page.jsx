@@ -157,6 +157,26 @@ export default function EducationPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Sample data picker */}
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Try a sample</p>
+            <div className="flex flex-wrap gap-2">
+              {SAMPLE_TEXTS.map((sample, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => { setContent(sample.text); setLanguage(sample.language); }}
+                  className={[
+                    'filter-chip text-xs',
+                    content === sample.text ? 'active' : '',
+                  ].join(' ')}
+                >
+                  {sample.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <Textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}

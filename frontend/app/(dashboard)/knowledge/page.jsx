@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   BookOpen, Globe, Music, Landmark, Flame, Scroll, Heart,
-  Filter, Search, Upload, X, Languages, Check, Sparkles, FileText, Mic, Image,
+  Search, Upload, X, Languages, Sparkles, FileText, Mic, Image, Filter,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,38 +18,39 @@ import { toast } from 'sonner';
 import api from '@/lib/api';
 import { LANGUAGE_COLORS, SUPPORTED_LANGUAGES } from '@/lib/constants';
 
-// ── Constants ────────────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
 
+// Values must match the knowledgeType enum stored in MongoDB
 const CATEGORIES = [
-  { value: 'all',       label: 'All',        icon: BookOpen  },
-  { value: 'story',     label: 'Stories',    icon: Scroll    },
-  { value: 'proverb',   label: 'Proverbs',   icon: Globe     },
-  { value: 'folktale',  label: 'Folktales',  icon: BookOpen  },
-  { value: 'history',   label: 'History',    icon: Landmark  },
-  { value: 'festival',  label: 'Festivals',  icon: Flame     },
-  { value: 'song',      label: 'Songs',      icon: Music     },
-  { value: 'tradition', label: 'Traditions', icon: Heart     },
+  { value: 'all',              label: 'All',         icon: BookOpen  },
+  { value: 'folktale',         label: 'Folktales',   icon: Scroll    },
+  { value: 'proverb',          label: 'Proverbs',    icon: Globe     },
+  { value: 'oral_history',     label: 'History',     icon: Landmark  },
+  { value: 'community_history',label: 'Community',   icon: Landmark  },
+  { value: 'ceremony',         label: 'Ceremonies',  icon: Flame     },
+  { value: 'song',             label: 'Songs',       icon: Music     },
+  { value: 'tradition',        label: 'Traditions',  icon: Heart     },
+  { value: 'medicine',         label: 'Medicine',    icon: BookOpen  },
 ];
 
 const LANGUAGES = ['all', 'hausa', 'yoruba', 'igbo', 'english', 'pidgin'];
 
-// Prebuilt keyword suggestions grouped by theme
 const KEYWORD_GROUPS = [
   {
-    label: 'Popular Topics',
-    keywords: ['wisdom', 'courage', 'honesty', 'patience', 'love', 'justice', 'community'],
+    label: 'Topics',
+    keywords: ['wisdom', 'courage', 'patience', 'love', 'justice', 'community'],
   },
   {
     label: 'Traditions',
-    keywords: ['Egungun', 'Sango', 'Ogun', 'Ifa', 'kola nut', 'masquerade', 'initiation'],
+    keywords: ['Egungun', 'Sango', 'Ifa', 'kola nut', 'masquerade', 'initiation'],
   },
   {
-    label: 'Nature & Animals',
-    keywords: ['tortoise', 'spider', 'lion', 'river', 'forest', 'harvest', 'rain'],
+    label: 'Animals',
+    keywords: ['tortoise', 'spider', 'lion', 'river', 'harvest'],
   },
   {
     label: 'History',
-    keywords: ['Oyo Empire', 'Benin Kingdom', 'Sokoto Caliphate', 'Nri Kingdom', 'Arochukwu'],
+    keywords: ['Oyo Empire', 'Benin Kingdom', 'Sokoto Caliphate', 'Nri Kingdom'],
   },
 ];
 
@@ -60,9 +61,9 @@ const fadeUp = {
   visible: (i = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.3, delay: i * 0.04 } }),
 };
 
-// ── Inline Translate Button ──────────────────────────────────────────────────
+// ── Inline Translate ──────────────────────────────────────────────────────────
 
-function TranslateInline({ storyId, title }) {
+function TranslateInline({ storyId }) {
   const [open, setOpen] = useState(false);
   const [lang, setLang] = useState('hausa');
 
@@ -72,68 +73,52 @@ function TranslateInline({ storyId, title }) {
     onError: () => toast.error('Translation failed'),
   });
 
+  if (!open) {
+    return (
+      <button
+        onClick={(e) => { e.preventDefault(); setOpen(true); }}
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors mt-2"
+      >
+        <Languages className="w-3 h-3" /> Translate
+      </button>
+    );
+  }
+
   return (
-    <div className="mt-2">
-      {!open ? (
-        <button
-          onClick={(e) => { e.preventDefault(); setOpen(true); }}
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
-        >
-          <Languages className="w-3 h-3" /> Translate
+    <div onClick={(e) => e.preventDefault()} className="space-y-2 border-t border-border/40 pt-2 mt-2">
+      <div className="flex items-center gap-2">
+        <Select value={lang} onValueChange={setLang}>
+          <SelectTrigger className="h-7 text-xs w-28"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {SUPPORTED_LANGUAGES.map((l) => (
+              <SelectItem key={l} value={l} className="text-xs capitalize">{l}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button size="sm" className="h-7 text-xs gradient-brand text-white border-0 px-3"
+          onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+          {mutation.isPending ? <Sparkles className="w-3 h-3 animate-spin" /> : 'Go'}
+        </Button>
+        <button onClick={() => { setOpen(false); mutation.reset(); }} className="text-muted-foreground hover:text-foreground">
+          <X className="w-3.5 h-3.5" />
         </button>
-      ) : (
-        <div
-          onClick={(e) => e.preventDefault()}
-          className="space-y-2 border-t border-border/40 pt-2 mt-2"
-        >
-          <div className="flex items-center gap-2">
-            <Select value={lang} onValueChange={setLang}>
-              <SelectTrigger className="h-7 text-xs w-28">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SUPPORTED_LANGUAGES.map((l) => (
-                  <SelectItem key={l} value={l} className="text-xs capitalize">{l}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              size="sm"
-              className="h-7 text-xs gradient-brand text-white border-0 px-3"
-              onClick={() => mutation.mutate()}
-              disabled={mutation.isPending}
-            >
-              {mutation.isPending ? <Sparkles className="w-3 h-3 animate-spin" /> : 'Go'}
-            </Button>
-            <button onClick={() => { setOpen(false); mutation.reset(); }} className="text-muted-foreground hover:text-foreground">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-          {mutation.isPending && (
-            <p className="text-xs text-muted-foreground animate-pulse flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-primary" /> Gemma is translating…
-            </p>
-          )}
-          {mutation.data && (
-            <div className="bg-primary/5 border border-primary/20 rounded-lg p-2.5 text-xs leading-relaxed">
-              <p className="font-medium text-primary mb-1 capitalize">{lang} translation:</p>
-              <p className="text-foreground">
-                {mutation.data.translation || mutation.data.translatedText || (typeof mutation.data === 'string' ? mutation.data : '')}
-              </p>
-              {mutation.data.culturalNotes?.length > 0 && (
-                <p className="text-muted-foreground mt-1.5 text-[10px]">
-                  📌 {mutation.data.culturalNotes[0]?.culturalNote || mutation.data.culturalNotes[0]}
-                </p>
-              )}
-            </div>
-          )}
+      </div>
+      {mutation.isPending && (
+        <p className="text-xs text-muted-foreground animate-pulse flex items-center gap-1">
+          <Sparkles className="w-3 h-3 text-primary" /> Gemma is translating…
+        </p>
+      )}
+      {mutation.data && (
+        <div className="bg-primary/5 border border-primary/20 rounded-lg p-2.5 text-xs leading-relaxed">
+          <p className="font-medium text-primary mb-1 capitalize">{lang}:</p>
+          <p>{mutation.data.translation || mutation.data.translatedText || (typeof mutation.data === 'string' ? mutation.data : '')}</p>
         </div>
       )}
     </div>
   );
 }
 
-// ── Story Card ───────────────────────────────────────────────────────────────
+// ── Story Card ────────────────────────────────────────────────────────────────
 
 function StoryCard({ item, i }) {
   return (
@@ -161,17 +146,19 @@ function StoryCard({ item, i }) {
               ))}
             </div>
           </Link>
-          <TranslateInline storyId={item._id} title={item.title} />
+          <TranslateInline storyId={item._id} />
         </CardContent>
       </Card>
     </motion.div>
   );
 }
 
-// ── Upload Card ──────────────────────────────────────────────────────────────
+// ── Upload Card ───────────────────────────────────────────────────────────────
 
 function UploadCard({ item, i }) {
   const Icon = UPLOAD_TYPE_ICONS[item.uploadType] || FileText;
+  const fileUrl = item.fileUrl && !item.fileUrl.startsWith('local://') ? item.fileUrl : null;
+
   return (
     <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={i}>
       <Card className="border-border/50 hover:border-primary/30 hover:shadow-md transition-all h-full">
@@ -181,16 +168,21 @@ function UploadCard({ item, i }) {
               <Icon className="w-4 h-4 text-muted-foreground" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm truncate">{item.originalName}</p>
+              {fileUrl ? (
+                <a href={fileUrl} target="_blank" rel="noopener noreferrer"
+                  className="font-semibold text-sm truncate hover:text-primary transition-colors flex items-center gap-1">
+                  <span className="truncate">{item.originalName}</span>
+                </a>
+              ) : (
+                <p className="font-semibold text-sm truncate">{item.originalName}</p>
+              )}
               <p className="text-xs text-muted-foreground capitalize">{item.uploadType}</p>
             </div>
-            <Badge
-              className={`text-xs shrink-0 ${
-                item.analysisStatus === 'completed'
-                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                  : 'bg-muted text-muted-foreground'
-              }`}
-            >
+            <Badge className={`text-xs shrink-0 ${
+              item.analysisStatus === 'completed'
+                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                : 'bg-muted text-muted-foreground'
+            }`}>
               {item.analysisStatus || 'pending'}
             </Badge>
           </div>
@@ -200,16 +192,23 @@ function UploadCard({ item, i }) {
             </p>
           )}
           {item.ingestion?.aiUnderstanding?.subThemes?.length > 0 && (
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1 mb-3">
               {item.ingestion.aiUnderstanding.subThemes.slice(0, 3).map((t) => (
                 <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
               ))}
             </div>
           )}
-          <div className="mt-3">
+          <div className="flex gap-2">
+            {fileUrl && (
+              <a href={fileUrl} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                  View File
+                </Button>
+              </a>
+            )}
             <Link href="/upload">
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
-                <Upload className="w-3 h-3" /> View in Uploads
+              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
+                <Upload className="w-3 h-3" /> Details
               </Button>
             </Link>
           </div>
@@ -219,7 +218,7 @@ function UploadCard({ item, i }) {
   );
 }
 
-// ── Main Page ────────────────────────────────────────────────────────────────
+// ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function KnowledgeLibraryPage() {
   const [activeCategory, setActiveCategory] = useState('all');
@@ -227,43 +226,63 @@ export default function KnowledgeLibraryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [inputValue, setInputValue] = useState('');
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['knowledge-library', activeCategory, language, searchQuery],
-    queryFn: () => {
-      const params = new URLSearchParams({ limit: '30', sort: '-createdAt' });
+  const hasFilters = activeCategory !== 'all' || language !== 'all' || !!searchQuery;
+
+  // Stories: use /search endpoint when there's a keyword, otherwise /stories with filters
+  const { data: storiesData, isLoading: storiesLoading } = useQuery({
+    queryKey: ['knowledge-library-stories', activeCategory, language, searchQuery],
+    queryFn: async () => {
+      if (searchQuery) {
+        // Use full-text search endpoint — supports q param
+        const params = new URLSearchParams({ q: searchQuery, limit: '30' });
+        if (language !== 'all') params.set('language', language);
+        if (activeCategory !== 'all') params.set('knowledgeType', activeCategory);
+        const r = await api.get(`/search?${params}`);
+        // /search returns { stories: [], proverbs: [] }
+        return r.data.data?.stories || [];
+      }
+      // No keyword — use /stories with direct filters
+      const params = new URLSearchParams({ limit: '40', sort: '-createdAt' });
       if (activeCategory !== 'all') params.set('knowledgeType', activeCategory);
       if (language !== 'all') params.set('language', language);
-      if (searchQuery) params.set('search', searchQuery);
-      return api.get(`/stories?${params}`).then((r) => r.data);
+      const r = await api.get(`/stories?${params}`);
+      return r.data.data || [];
     },
   });
 
-  const { data: uploadsData, isLoading: uploadsLoading } = useQuery({
-    queryKey: ['knowledge-uploads', language, searchQuery],
-    queryFn: () => api.get('/uploads').then((r) => r.data.data),
+  // Uploads: fetch all then filter client-side (uploads don't have knowledgeType)
+  const { data: uploadsRaw, isLoading: uploadsLoading } = useQuery({
+    queryKey: ['knowledge-uploads'],
+    queryFn: () => api.get('/uploads').then((r) => r.data.data || []),
   });
 
-  const stories = data?.data || [];
-  const uploads = (uploadsData || []).filter((u) => {
+  const stories = storiesData || [];
+
+  // Client-side filter uploads by language (from ingestion.detectedLanguage) and search
+  const uploads = (uploadsRaw || []).filter((u) => {
+    if (language !== 'all') {
+      const detected = u.ingestion?.detectedLanguage?.toLowerCase();
+      if (detected && detected !== language) return false;
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return (
         u.originalName?.toLowerCase().includes(q) ||
         u.ingestion?.summaries?.short?.toLowerCase().includes(q) ||
+        u.ingestion?.metadata?.title?.toLowerCase().includes(q) ||
         u.ingestion?.aiUnderstanding?.subThemes?.some((t) => t.toLowerCase().includes(q))
       );
     }
     return true;
   });
 
-  const handleSearch = (q) => {
-    setSearchQuery(q);
-    setInputValue(q);
-  };
+  const handleSearch = (q) => { setSearchQuery(q); setInputValue(q); };
+  const clearSearch = () => { setSearchQuery(''); setInputValue(''); };
 
-  const clearSearch = () => {
-    setSearchQuery('');
-    setInputValue('');
+  const clearAll = () => {
+    setActiveCategory('all');
+    setLanguage('all');
+    clearSearch();
   };
 
   return (
@@ -276,7 +295,7 @@ export default function KnowledgeLibraryPage() {
           </div>
           <div>
             <h1 className="font-serif text-2xl sm:text-3xl font-bold">Knowledge Library</h1>
-            <p className="text-muted-foreground text-sm">Browse, search, and translate indigenous knowledge</p>
+            <p className="text-muted-foreground text-sm">Browse, filter, and translate indigenous knowledge</p>
           </div>
         </div>
       </motion.div>
@@ -289,25 +308,22 @@ export default function KnowledgeLibraryPage() {
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch(inputValue)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch(inputValue.trim())}
             placeholder="Search stories, proverbs, traditions… (Enter to search)"
             className="w-full h-10 pl-9 pr-10 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
           {inputValue && (
-            <button
-              onClick={clearSearch}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
+            <button onClick={clearSearch} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
 
-        {/* Prebuilt keyword groups */}
+        {/* Keyword chips */}
         <div className="mt-3 space-y-2">
           {KEYWORD_GROUPS.map((group) => (
             <div key={group.label} className="flex items-start gap-2 flex-wrap">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 w-24 shrink-0 pt-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 w-16 shrink-0 pt-1">
                 {group.label}
               </span>
               <div className="flex flex-wrap gap-1.5">
@@ -329,56 +345,93 @@ export default function KnowledgeLibraryPage() {
             </div>
           ))}
         </div>
+      </motion.div>
 
-        {searchQuery && (
-          <div className="flex items-center gap-2 mt-2">
-            <p className="text-xs text-muted-foreground">
-              Searching for: <span className="font-medium text-foreground">"{searchQuery}"</span>
-            </p>
-            <button onClick={clearSearch} className="text-xs text-primary hover:underline">Clear</button>
+      {/* Filters */}
+      <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={2}>
+        <div className="filter-panel space-y-3">
+          {/* Category row */}
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="section-label w-20 shrink-0">Category</span>
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-none flex-1 pb-0.5">
+              {CATEGORIES.map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => setActiveCategory(value)}
+                  className={[
+                    'filter-chip shrink-0',
+                    activeCategory === value ? 'active' : '',
+                  ].join(' ')}
+                >
+                  <Icon className="w-3 h-3" />
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
-        )}
+
+          <div className="filter-divider" />
+
+          {/* Language row */}
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="section-label w-20 shrink-0">Language</span>
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-none flex-1 pb-0.5">
+              {LANGUAGES.map((lang) => (
+                <button
+                  key={lang}
+                  onClick={() => setLanguage(lang)}
+                  className={[
+                    'filter-chip shrink-0 capitalize',
+                    language === lang ? 'active' : '',
+                  ].join(' ')}
+                >
+                  {lang === 'all' ? 'All' : lang}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Active filter summary + clear */}
+          {hasFilters && (
+            <>
+              <div className="filter-divider" />
+              <div className="flex items-center gap-2 flex-wrap">
+                <Filter className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <span className="text-xs text-muted-foreground">Active filters:</span>
+                {activeCategory !== 'all' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-primary/10 text-primary border border-primary/20">
+                    {CATEGORIES.find((c) => c.value === activeCategory)?.label}
+                    <button onClick={() => setActiveCategory('all')} aria-label="Remove category filter">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+                {language !== 'all' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-primary/10 text-primary border border-primary/20 capitalize">
+                    {language}
+                    <button onClick={() => setLanguage('all')} aria-label="Remove language filter">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+                {searchQuery && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-primary/10 text-primary border border-primary/20">
+                    &ldquo;{searchQuery}&rdquo;
+                    <button onClick={clearSearch} aria-label="Remove search filter">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+                <button onClick={clearAll} className="text-xs text-muted-foreground hover:text-destructive ml-auto transition-colors">
+                  Clear all
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </motion.div>
 
-      {/* Category + Language filters */}
-      <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={2} className="space-y-2">
-        <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
-          {CATEGORIES.map(({ value, label, icon: Icon }) => (
-            <button
-              key={value}
-              onClick={() => setActiveCategory(value)}
-              className={[
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all border',
-                activeCategory === value
-                  ? 'gradient-brand text-white border-transparent'
-                  : 'border-border bg-background hover:bg-muted text-muted-foreground',
-              ].join(' ')}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Filter className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-          {LANGUAGES.map((lang) => (
-            <button
-              key={lang}
-              onClick={() => setLanguage(lang)}
-              className={[
-                'px-2.5 py-1 rounded-full text-xs font-medium capitalize transition-all border',
-                language === lang
-                  ? 'bg-primary/10 text-primary border-primary/30'
-                  : 'border-border text-muted-foreground hover:bg-muted',
-              ].join(' ')}
-            >
-              {lang === 'all' ? 'All Languages' : lang}
-            </button>
-          ))}
-        </div>
-      </motion.div>
-
-      {/* Tabs: Stories | Uploads */}
+      {/* Tabs */}
       <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={3}>
         <Tabs defaultValue="stories">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
@@ -386,7 +439,7 @@ export default function KnowledgeLibraryPage() {
               <TabsTrigger value="stories" className="gap-1.5">
                 <BookOpen className="w-3.5 h-3.5" />
                 Stories & Knowledge
-                {!isLoading && <span className="ml-1 text-xs opacity-60">({stories.length})</span>}
+                {!storiesLoading && <span className="ml-1 text-xs opacity-60">({stories.length})</span>}
               </TabsTrigger>
               <TabsTrigger value="uploads" className="gap-1.5">
                 <Upload className="w-3.5 h-3.5" />
@@ -403,7 +456,7 @@ export default function KnowledgeLibraryPage() {
 
           {/* Stories tab */}
           <TabsContent value="stories">
-            {isLoading ? (
+            {storiesLoading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {Array(9).fill(0).map((_, i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
               </div>
@@ -412,10 +465,12 @@ export default function KnowledgeLibraryPage() {
                 <BookOpen className="w-10 h-10 mx-auto mb-4 opacity-20" />
                 <p className="font-medium mb-1">No stories found</p>
                 <p className="text-sm mb-4">
-                  {searchQuery ? `No results for "${searchQuery}". Try a different keyword.` : 'Try a different filter.'}
+                  {hasFilters
+                    ? 'No results match your current filters. Try adjusting them.'
+                    : 'No stories yet. Be the first to contribute.'}
                 </p>
-                {searchQuery && (
-                  <Button variant="outline" size="sm" onClick={clearSearch}>Clear Search</Button>
+                {hasFilters && (
+                  <Button variant="outline" size="sm" onClick={clearAll}>Clear Filters</Button>
                 )}
               </div>
             ) : (
@@ -434,13 +489,14 @@ export default function KnowledgeLibraryPage() {
             ) : uploads.length === 0 ? (
               <div className="text-center py-16 text-muted-foreground">
                 <Upload className="w-10 h-10 mx-auto mb-4 opacity-20" />
-                <p className="font-medium mb-1">No uploaded documents yet</p>
-                <p className="text-sm mb-4">Upload PDFs, images, audio, or text files to preserve knowledge.</p>
-                <Link href="/upload">
-                  <Button variant="outline" size="sm" className="gap-1.5">
-                    <Upload className="w-3.5 h-3.5" /> Upload Knowledge
-                  </Button>
-                </Link>
+                <p className="font-medium mb-1">No uploaded documents found</p>
+                <p className="text-sm mb-4">
+                  {hasFilters ? 'Try adjusting your filters.' : 'Upload PDFs, images, audio, or text files.'}
+                </p>
+                {hasFilters
+                  ? <Button variant="outline" size="sm" onClick={clearAll}>Clear Filters</Button>
+                  : <Link href="/upload"><Button variant="outline" size="sm" className="gap-1.5"><Upload className="w-3.5 h-3.5" /> Upload Knowledge</Button></Link>
+                }
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

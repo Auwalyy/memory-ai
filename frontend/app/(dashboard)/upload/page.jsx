@@ -425,9 +425,10 @@ export default function UploadPage() {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="font-medium text-sm truncate leading-snug hover:text-primary flex items-center gap-1 min-w-0"
+                                onClick={(e) => e.stopPropagation()}
                               >
                                 <span className="truncate">{upload.originalName}</span>
-                                <ExternalLink className="w-3 h-3 shrink-0" />
+                                <ExternalLink className="w-3 h-3 shrink-0 text-primary" />
                               </a>
                             ) : (
                               <span className="font-medium text-sm truncate leading-snug">{upload.originalName}</span>
@@ -467,6 +468,19 @@ export default function UploadPage() {
                             {isResultOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                             {isResultOpen ? t('hide') : t('viewResults')}
                           </Button>
+                        )}
+
+                        {fileUrl && (
+                          <a
+                            href={fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Button size="sm" variant="outline" className="gap-1 text-xs h-7">
+                              <ExternalLink className="w-3 h-3" /> View
+                            </Button>
+                          </a>
                         )}
 
                         {hasResult && !isPipelineActive && (

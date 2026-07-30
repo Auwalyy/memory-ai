@@ -56,13 +56,20 @@ function CopyButton({ text }) {
   );
 }
 
+// Strip any leading "User asks..." / "My persona:" / "Goal:" preamble lines
+function cleanAIResponse(raw) {
+  if (!raw) return raw;
+  const preamblePattern = /^(user asks?[^\n]*\n|my persona[^\n]*\n|goal[^\n]*\n|\*[^\n]*\n)+/i;
+  return raw.replace(preamblePattern, '').trimStart();
+}
+
 function AIMessage({ content }) {
   return (
     <div className="prose prose-sm dark:prose-invert max-w-none text-foreground leading-relaxed
       prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5
       prose-headings:font-semibold prose-headings:text-foreground
       prose-strong:text-foreground prose-code:text-primary prose-code:bg-muted prose-code:px-1 prose-code:rounded">
-      <ReactMarkdown>{content}</ReactMarkdown>
+      <ReactMarkdown>{cleanAIResponse(content)}</ReactMarkdown>
     </div>
   );
 }

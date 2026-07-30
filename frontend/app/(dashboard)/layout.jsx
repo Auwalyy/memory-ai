@@ -15,46 +15,48 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
 
 // ── Nav structure ────────────────────────────────────────────────────────────
 
-const MAIN_NAV = [
-  { href: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard' },
-  {
-    label: 'Knowledge Library',
-    icon: BookOpen,
-    children: [
-      { href: '/stories',   label: 'Stories' },
-      { href: '/proverbs',  label: 'Proverbs' },
-      { href: '/knowledge', label: 'All Categories' },
-    ],
-  },
-  { href: '/upload',        icon: Upload,        label: 'Upload Knowledge' },
-  { href: '/chat',          icon: MessageSquare, label: 'AI Cultural Chat' },
-  { href: '/graph',         icon: Network,       label: 'Knowledge Graph' },
-  { href: '/education',     icon: Sparkles,      label: 'Content Studio' },
-  { href: '/search',        icon: Search,        label: 'Search' },
-  { href: '/contributions', icon: User,          label: 'My Contributions' },
+function buildNav(t) {
+  return [
+    { href: '/dashboard',     icon: LayoutDashboard, label: t('dashboard') },
+    {
+      label: t('stories'),
+      icon: BookOpen,
+      children: [
+        { href: '/stories',   label: t('stories') },
+        { href: '/proverbs',  label: t('proverbs') },
+        { href: '/knowledge', label: 'All Categories' },
+      ],
+    },
+    { href: '/upload',        icon: Upload,        label: t('upload') },
+    { href: '/chat',          icon: MessageSquare, label: t('chat') },
+    { href: '/graph',         icon: Network,       label: t('graph') },
+    { href: '/education',     icon: Sparkles,      label: t('education') },
+    { href: '/search',        icon: Search,        label: t('search') },
+    { href: '/contributions', icon: User,          label: t('bookmarks') },
+  ];
+}
+
+const ANALYTICS_NAV_KEYS = [
+  { href: '/analytics', icon: BarChart2, labelKey: 'Analytics' },
 ];
 
-const ANALYTICS_NAV = [
-  { href: '/analytics', icon: BarChart2, label: 'Analytics' },
+const ADMIN_NAV_KEYS = [
+  { href: '/admin/reviews', icon: ClipboardList, labelKey: 'Pending Reviews' },
+  { href: '/admin/users',   icon: Users,         labelKey: 'Users' },
+  { href: '/profile',       icon: Settings,      labelKey: 'Settings' },
 ];
 
-const ADMIN_NAV = [
-  { href: '/admin/reviews', icon: ClipboardList, label: 'Pending Reviews' },
-  { href: '/admin/users',   icon: Users,         label: 'Users' },
-  { href: '/profile',       icon: Settings,      label: 'Settings' },
-];
-
-// Bottom tab bar — 5 most used
-const BOTTOM_TABS = [
-  { href: '/dashboard',     icon: LayoutDashboard, label: 'Home' },
-  { href: '/knowledge',     icon: BookOpen,        label: 'Library' },
-  { href: '/chat',          icon: MessageSquare,   label: 'AI Chat' },
-  { href: '/search',        icon: Search,          label: 'Search' },
-  { href: '/upload',        icon: Upload,          label: 'Upload' },
+const BOTTOM_TABS_KEYS = [
+  { href: '/dashboard', icon: LayoutDashboard, labelKey: 'dashboard' },
+  { href: '/knowledge', icon: BookOpen,        labelKey: 'stories' },
+  { href: '/chat',      icon: MessageSquare,   labelKey: 'chat' },
+  { href: '/search',    icon: Search,          labelKey: 'search' },
+  { href: '/upload',    icon: Upload,          labelKey: 'upload' },
 ];
 
 // ── NavLink ──────────────────────────────────────────────────────────────────
@@ -136,8 +138,10 @@ function SidebarContent({ onNavigate }) {
   const { user, logout, updateProfile } = useAuth();
   const { theme, setTheme } = useTheme();
   const { lang, setLanguage } = useLanguage();
+  const { t } = useTranslation();
   const router = useRouter();
 
+  const MAIN_NAV = buildNav(t);
   const isAdmin = user?.role === 'admin' || user?.role === 'moderator';
 
   const LANG_OPTIONS = [
@@ -183,20 +187,19 @@ function SidebarContent({ onNavigate }) {
         )}
 
         <SectionLabel>Analytics</SectionLabel>
-        {ANALYTICS_NAV.map((item) => (
-          <NavLink key={item.href} href={item.href} icon={item.icon} label={item.label} onClick={onNavigate} />
+        {ANALYTICS_NAV_KEYS.map((item) => (
+          <NavLink key={item.href} href={item.href} icon={item.icon} label={item.labelKey} onClick={onNavigate} />
         ))}
 
         {isAdmin && (
           <>
             <SectionLabel>Administration</SectionLabel>
-            {ADMIN_NAV.map((item) => (
-              <NavLink key={item.href} href={item.href} icon={item.icon} label={item.label} onClick={onNavigate} />
+            {ADMIN_NAV_KEYS.map((item) => (
+              <NavLink key={item.href} href={item.href} icon={item.icon} label={item.labelKey} onClick={onNavigate} />
             ))}
           </>
         )}
 
-        {/* Settings always visible for non-admins */}
         {!isAdmin && (
           <NavLink href="/profile" icon={Settings} label="Settings" onClick={onNavigate} />
         )}
@@ -266,6 +269,44 @@ function SidebarContent({ onNavigate }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// ── Bottom tabs (translated) ─────────────────────────────────────────────────
+
+function BottomTabs() {
+  const pathname = usePathname();
+  const { t } = useTranslation();
+  const tabs = [
+    { href: '/dashboard', icon: LayoutDashboard, labelKey: 'dashboard' },
+    { href: '/knowledge', icon: BookOpen,        labelKey: 'stories' },
+    { href: '/chat',      icon: MessageSquare,   labelKey: 'chat' },
+    { href: '/search',    icon: Search,          labelKey: 'search' },
+    { href: '/upload',    icon: Upload,          labelKey: 'upload' },
+  ];
+  return (
+    <>
+      {tabs.map((item) => {
+        const isActive =
+          item.href === '/dashboard'
+            ? pathname === '/dashboard'
+            : pathname === item.href || pathname.startsWith(item.href + '/');
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              'flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors min-w-0',
+              isActive ? 'text-primary' : 'text-muted-foreground'
+            )}
+            aria-current={isActive ? 'page' : undefined}
+          >
+            <item.icon className={cn('w-5 h-5', isActive && 'stroke-[2.5]')} />
+            <span className="text-[10px] font-medium truncate">{t(item.labelKey)}</span>
+          </Link>
+        );
+      })}
+    </>
   );
 }
 
@@ -346,26 +387,7 @@ export default function DashboardLayout({ children }) {
         className="md:hidden fixed bottom-0 inset-x-0 z-40 h-16 flex items-center justify-around border-t border-border/60 bg-card/95 backdrop-blur-md"
         aria-label="Bottom navigation"
       >
-        {BOTTOM_TABS.map((item) => {
-          const isActive =
-            item.href === '/dashboard'
-              ? pathname === '/dashboard'
-              : pathname === item.href || pathname.startsWith(item.href + '/');
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors min-w-0',
-                isActive ? 'text-primary' : 'text-muted-foreground'
-              )}
-              aria-current={isActive ? 'page' : undefined}
-            >
-              <item.icon className={cn('w-5 h-5', isActive && 'stroke-[2.5]')} />
-              <span className="text-[10px] font-medium truncate">{item.label}</span>
-            </Link>
-          );
-        })}
+        <BottomTabs />
       </nav>
     </div>
   );
