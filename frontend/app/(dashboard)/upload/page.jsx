@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload, FileText, Image, Mic, CheckCircle, Clock, AlertCircle,
-  Network, ChevronDown, ChevronUp, RefreshCw, CloudUpload,
+  Network, ChevronDown, ChevronUp, RefreshCw, CloudUpload, ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -408,6 +408,7 @@ export default function UploadPage() {
                 const isPipelineActive = activePipelines[upload._id];
                 const isResultOpen = expandedResults[upload._id];
                 const hasResult = upload.analysisStatus === 'completed' && upload.ingestion?.completedAt;
+                const fileUrl = upload.fileUrl && !upload.fileUrl.startsWith('local://') ? upload.fileUrl : null;
 
                 return (
                   <Card key={upload._id} className="border-border/50">
@@ -418,7 +419,19 @@ export default function UploadPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2 mb-1">
-                            <span className="font-medium text-sm truncate leading-snug">{upload.originalName}</span>
+                            {fileUrl ? (
+                              <a
+                                href={fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-medium text-sm truncate leading-snug hover:text-primary flex items-center gap-1 min-w-0"
+                              >
+                                <span className="truncate">{upload.originalName}</span>
+                                <ExternalLink className="w-3 h-3 shrink-0" />
+                              </a>
+                            ) : (
+                              <span className="font-medium text-sm truncate leading-snug">{upload.originalName}</span>
+                            )}
                             <Badge variant="secondary" className="text-xs shrink-0 h-5">{upload.uploadType}</Badge>
                           </div>
                           {upload.ingestion?.metadata?.title && !isPipelineActive && (
