@@ -20,12 +20,12 @@ export function Providers({ children }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-        <AuthProvider>
-          <LanguageProvider>
+        <LanguageProvider>
+          <AuthProvider>
             {children}
             <Toaster richColors position="top-right" />
-          </LanguageProvider>
-        </AuthProvider>
+          </AuthProvider>
+        </LanguageProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
