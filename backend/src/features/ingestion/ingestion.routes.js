@@ -34,8 +34,10 @@ router.post('/:uploadId/run', async (req, res, next) => {
     if (!upload) throw new AppError('Upload not found', 404);
     if (!upload.extractedText) throw new AppError('No text available for ingestion', 400);
 
+    const outputLanguage = req.body.outputLanguage || null;
+
     // Fire pipeline in background — respond immediately
-    setImmediate(() => ingestionService.run(upload._id));
+    setImmediate(() => ingestionService.run(upload._id, outputLanguage));
 
     sendSuccess(res, { uploadId: upload._id, status: 'started' }, 'Ingestion pipeline started');
   } catch (err) { next(err); }

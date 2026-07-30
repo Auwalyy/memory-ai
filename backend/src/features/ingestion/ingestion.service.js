@@ -11,10 +11,6 @@ const _sseClients = new Map();
 const _running = new Set();
 
 const ingestionService = {
-  /**
-   * Register an SSE response object for a given upload.
-   * Returns a cleanup function.
-   */
   registerSSE(uploadId, res) {
     const id = uploadId.toString();
     if (!_sseClients.has(id)) _sseClients.set(id, []);
@@ -36,13 +32,12 @@ const ingestionService = {
 
   /**
    * Run the full 8-step ingestion pipeline for an upload.
-   * Uses findByIdAndUpdate ($set) throughout to avoid Mongoose version conflicts
-   * when the pipeline is triggered concurrently.
+   * @param {string} uploadId
+   * @param {string|null} outputLanguage - language for AI output (hausa/yoruba/igbo/english/pidgin)
    */
-  async run(uploadId) {
+  async run(uploadId, outputLanguage = null) {
     const id = uploadId.toString();
 
-    // Mutex — skip if already running for this upload
     if (_running.has(id)) {
       logger.info('Ingestion already running, skipping duplicate', { uploadId });
       return;
@@ -56,7 +51,6 @@ const ingestionService = {
       const upload = await Upload.findById(uploadId).lean();
       if (!upload) { _running.delete(id); return; }
 
-      // Mark processing — use updateOne to avoid version conflicts
       await Upload.updateOne({ _id: uploadId }, { $set: { analysisStatus: ANALYSIS_STATUS.PROCESSING } });
 
       const text = upload.extractedText || '';
@@ -67,39 +61,46 @@ const ingestionService = {
         return;
       }
 
-      // ── Step 1: Detect Language ──────────────────────────────────────────
+      // Step 1: Detect Language
       emit(1, 'Detecting Language...', 10);
       const langResult = await gemmaService.detectLanguage(text);
       const detectedLanguage = langResult?.language || 'english';
-      await Upload.updateOne({ _id: uploadId }, { $set: { 'ingestion.detectedLanguage': detectedLanguage } });
+      // outputLanguage overrides the language used for AI output (summaries, analysis, etc.)
+      const analysisLanguage = outputLanguage || detectedLanguage;
+      await Upload.updateOne({ _id: uploadId }, {
+        $set: {
+          'ingestion.detectedLanguage': detectedLanguage,
+          'ingestion.outputLanguage': analysisLanguage,
+        },
+      });
 
-      // ── Step 2: Classify Content ─────────────────────────────────────────
+      // Step 2: Classify Content
       emit(2, 'Understanding Content...', 22);
       const classification = await gemmaService.classifyContent(text, detectedLanguage);
       const contentType = classification?.contentType || 'other';
       await Upload.updateOne({ _id: uploadId }, { $set: { 'ingestion.contentType': contentType } });
 
-      // ── Step 3: Generate Summaries ───────────────────────────────────────
+      // Step 3: Generate Summaries (in chosen output language)
       emit(3, 'Reading & Summarising...', 35);
-      const summaries = await gemmaService.generateSummaries(text, detectedLanguage);
+      const summaries = await gemmaService.generateSummaries(text, analysisLanguage);
       await Upload.updateOne({ _id: uploadId }, { $set: { 'ingestion.summaries': summaries } });
 
-      // ── Step 4: Extract Entities ─────────────────────────────────────────
+      // Step 4: Extract Entities (in chosen output language)
       emit(4, 'Extracting Cultural Knowledge...', 50);
-      const entities = await gemmaService.extractEntities(text, detectedLanguage);
+      const entities = await gemmaService.extractEntities(text, analysisLanguage);
       await Upload.updateOne({ _id: uploadId }, { $set: { 'ingestion.entities': entities } });
 
-      // ── Step 5: AI Understanding ─────────────────────────────────────────
+      // Step 5: AI Understanding (in chosen output language)
       emit(5, 'Understanding Culture & Context...', 63);
-      const aiUnderstanding = await gemmaService.deepUnderstand(text, detectedLanguage);
+      const aiUnderstanding = await gemmaService.deepUnderstand(text, analysisLanguage);
       await Upload.updateOne({ _id: uploadId }, { $set: { 'ingestion.aiUnderstanding': aiUnderstanding } });
 
-      // ── Step 6: Generate Metadata ────────────────────────────────────────
+      // Step 6: Generate Metadata (in chosen output language)
       emit(6, 'Generating Metadata...', 75);
-      const metadata = await gemmaService.generateMetadata(text, detectedLanguage, classification);
+      const metadata = await gemmaService.generateMetadata(text, analysisLanguage, classification);
       await Upload.updateOne({ _id: uploadId }, { $set: { 'ingestion.metadata': metadata } });
 
-      // ── Step 7: Generate Embeddings ──────────────────────────────────────
+      // Step 7: Generate Embeddings
       emit(7, 'Building Intelligence...', 87);
       const embeddingText = [metadata?.title, summaries?.short, (aiUnderstanding?.subThemes || []).join(' ')]
         .filter(Boolean).join(' ');
@@ -108,24 +109,23 @@ const ingestionService = {
         await Upload.updateOne({ _id: uploadId }, { $set: { 'ingestion.embedding': embedding } });
       }
 
-      // ── Step 8: Persist final status + Build Graph ───────────────────────
+      // Step 8: Persist final status + Build Graph
       emit(8, 'Building Knowledge Graph...', 95);
       await Upload.updateOne(
         { _id: uploadId },
         { $set: { analysisStatus: ANALYSIS_STATUS.COMPLETED, 'ingestion.completedAt': new Date() } }
       );
 
-      // Build graph nodes/edges (non-blocking)
       graphService
         .buildFromIngestion({ detectedLanguage, summaries, entities, aiUnderstanding, metadata }, uploadId)
         .catch((e) => logger.warn('Graph build failed', { err: e.message }));
 
       emit(8, 'Completed', 100, {
         done: true,
-        result: { detectedLanguage, contentType, title: metadata?.title, summaries, aiUnderstanding, metadata },
+        result: { detectedLanguage, outputLanguage: analysisLanguage, contentType, title: metadata?.title, summaries, aiUnderstanding, metadata },
       });
 
-      logger.info('Ingestion pipeline completed', { uploadId });
+      logger.info('Ingestion pipeline completed', { uploadId, outputLanguage: analysisLanguage });
     } catch (err) {
       logger.error('Ingestion pipeline failed', { uploadId, err: err.message });
       await Upload.updateOne({ _id: uploadId }, { $set: { analysisStatus: ANALYSIS_STATUS.FAILED } }).catch(() => {});

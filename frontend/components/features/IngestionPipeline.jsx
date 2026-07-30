@@ -23,11 +23,12 @@ const STEPS = [
 /**
  * IngestionPipeline
  * Props:
- *   uploadId  — string, required
+ *   uploadId       — string, required
+ *   outputLanguage — string, optional (hausa/yoruba/igbo/english/pidgin)
  *   onComplete(result) — called when pipeline finishes
  *   onError(msg)       — called on failure
  */
-export default function IngestionPipeline({ uploadId, onComplete, onError }) {
+export default function IngestionPipeline({ uploadId, outputLanguage, onComplete, onError }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress]       = useState(0);
   const [done, setDone]               = useState(false);
@@ -44,7 +45,8 @@ export default function IngestionPipeline({ uploadId, onComplete, onError }) {
     // Trigger pipeline
     fetch(`${base}/ingestion/${uploadId}/run`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ outputLanguage: outputLanguage || null }),
     }).catch(() => {});
 
     // Open SSE stream
