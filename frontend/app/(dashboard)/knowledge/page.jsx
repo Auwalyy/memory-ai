@@ -5,7 +5,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   BookOpen, Globe, Music, Landmark, Flame, Scroll, Heart,
-  Search, Upload, X, Languages, Sparkles, FileText, Mic, Image, Filter,
+  Search, Upload, X, Languages, Sparkles, FileText, Mic, Image, Filter, Quote,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +24,7 @@ import { LANGUAGE_COLORS, SUPPORTED_LANGUAGES } from '@/lib/constants';
 const CATEGORIES = [
   { value: 'all',              label: 'All',         icon: BookOpen  },
   { value: 'folktale',         label: 'Folktales',   icon: Scroll    },
-  { value: 'proverb',          label: 'Proverbs',    icon: Globe     },
+  { value: 'proverb',          label: 'Proverbs',    icon: Quote     },
   { value: 'oral_history',     label: 'History',     icon: Landmark  },
   { value: 'community_history',label: 'Community',   icon: Landmark  },
   { value: 'ceremony',         label: 'Ceremonies',  icon: Flame     },
@@ -121,32 +121,41 @@ function TranslateInline({ storyId }) {
 // ── Story Card ────────────────────────────────────────────────────────────────
 
 function StoryCard({ item, i }) {
+  const isProverb = item._isProverb;
   return (
     <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={i}>
       <Card className="border-border/50 hover:border-primary/30 hover:shadow-md transition-all h-full flex flex-col">
         <CardContent className="p-4 flex flex-col flex-1">
-          <Link href={`/stories/${item._id}`} className="flex-1 block">
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <h3 className="font-semibold text-sm line-clamp-2 flex-1 hover:text-primary transition-colors">
-                {item.title}
-              </h3>
-              <Badge className={`text-xs shrink-0 ${LANGUAGE_COLORS[item.language] || ''}`}>
-                {item.language}
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed mb-3">
-              {item.analysis?.summary || item.content?.slice(0, 120) + '…'}
-            </p>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <Badge variant="secondary" className="text-xs capitalize">
-                {item.knowledgeType?.replace(/_/g, ' ')}
-              </Badge>
-              {item.analysis?.themes?.slice(0, 2).map((theme) => (
-                <Badge key={theme} variant="outline" className="text-xs">{theme}</Badge>
-              ))}
-            </div>
-          </Link>
-          <TranslateInline storyId={item._id} />
+          {isProverb ? (
+            <Link href="/proverbs" className="flex-1 block">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <p className="font-serif font-semibold text-sm italic line-clamp-2 flex-1">&ldquo;{item.title}&rdquo;</p>
+                <Badge className={`text-xs shrink-0 ${LANGUAGE_COLORS[item.language] || ''}`}>{item.language}</Badge>
+              </div>
+              {item.englishTranslation && (
+                <p className="text-xs text-muted-foreground mb-1">{item.englishTranslation}</p>
+              )}
+              <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed mb-2">{item.analysis?.summary}</p>
+              <Badge variant="secondary" className="text-xs">Proverb</Badge>
+            </Link>
+          ) : (
+            <Link href={`/stories/${item._id}`} className="flex-1 block">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <h3 className="font-semibold text-sm line-clamp-2 flex-1 hover:text-primary transition-colors">{item.title}</h3>
+                <Badge className={`text-xs shrink-0 ${LANGUAGE_COLORS[item.language] || ''}`}>{item.language}</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed mb-3">
+                {item.analysis?.summary || item.content?.slice(0, 120) + '…'}
+              </p>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Badge variant="secondary" className="text-xs capitalize">{item.knowledgeType?.replace(/_/g, ' ')}</Badge>
+                {item.analysis?.themes?.slice(0, 2).map((theme) => (
+                  <Badge key={theme} variant="outline" className="text-xs">{theme}</Badge>
+                ))}
+              </div>
+            </Link>
+          )}
+          {!isProverb && <TranslateInline storyId={item._id} />}
         </CardContent>
       </Card>
     </motion.div>
@@ -228,25 +237,49 @@ export default function KnowledgeLibraryPage() {
 
   const hasFilters = activeCategory !== 'all' || language !== 'all' || !!searchQuery;
 
-  // Stories: use /search endpoint when there's a keyword, otherwise /stories with filters
+  // Stories + Proverbs combined
   const { data: storiesData, isLoading: storiesLoading } = useQuery({
     queryKey: ['knowledge-library-stories', activeCategory, language, searchQuery],
     queryFn: async () => {
       if (searchQuery) {
-        // Use full-text search endpoint — supports q param
         const params = new URLSearchParams({ q: searchQuery, limit: '30' });
         if (language !== 'all') params.set('language', language);
         if (activeCategory !== 'all') params.set('knowledgeType', activeCategory);
         const r = await api.get(`/search?${params}`);
-        // /search returns { stories: [], proverbs: [] }
-        return r.data.data?.stories || [];
+        const stories = r.data.data?.stories || [];
+        const proverbs = r.data.data?.proverbs || [];
+        // Normalise proverbs to story-like shape for unified rendering
+        const normProverbs = proverbs.map((p) => ({
+          ...p, _isProverb: true,
+          title: p.original,
+          knowledgeType: 'proverb',
+          analysis: { summary: p.meaning },
+        }));
+        return [...stories, ...normProverbs];
       }
-      // No keyword — use /stories with direct filters
-      const params = new URLSearchParams({ limit: '40', sort: '-createdAt' });
-      if (activeCategory !== 'all') params.set('knowledgeType', activeCategory);
-      if (language !== 'all') params.set('language', language);
-      const r = await api.get(`/stories?${params}`);
-      return r.data.data || [];
+      const results = [];
+      // Fetch stories (skip if category is proverb-only)
+      if (activeCategory !== 'proverb') {
+        const params = new URLSearchParams({ limit: '40', sort: '-createdAt' });
+        if (activeCategory !== 'all') params.set('knowledgeType', activeCategory);
+        if (language !== 'all') params.set('language', language);
+        const r = await api.get(`/stories?${params}`);
+        results.push(...(r.data.data || []));
+      }
+      // Fetch proverbs when category is all or proverb
+      if (activeCategory === 'all' || activeCategory === 'proverb') {
+        const params = new URLSearchParams({ limit: '20' });
+        if (language !== 'all') params.set('language', language);
+        const r = await api.get(`/proverbs?${params}`);
+        const proverbs = (r.data.data || []).map((p) => ({
+          ...p, _isProverb: true,
+          title: p.original,
+          knowledgeType: 'proverb',
+          analysis: { summary: p.meaning },
+        }));
+        results.push(...proverbs);
+      }
+      return results;
     },
   });
 

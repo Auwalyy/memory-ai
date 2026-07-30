@@ -7,14 +7,13 @@ import { motion } from 'framer-motion';
 import {
   LayoutDashboard, BookOpen, Upload, MessageSquare, Network,
   Sparkles, Search, User, BarChart2, ClipboardList, Users,
-  Settings, LogOut, Moon, Sun, Menu, Globe, ChevronDown, ChevronRight,
+  Settings, LogOut, Moon, Sun, Menu, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useAuth } from '@/hooks/useAuth';
-import { useLanguage } from '@/hooks/useLanguage';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
 
@@ -24,12 +23,12 @@ function buildNav(t) {
   return [
     { href: '/dashboard',     icon: LayoutDashboard, label: t('dashboard') },
     {
-      label: t('stories'),
+      label: 'Knowledge Library',
       icon: BookOpen,
       children: [
         { href: '/stories',   label: t('stories') },
         { href: '/proverbs',  label: t('proverbs') },
-        { href: '/knowledge', label: 'All Categories' },
+        { href: '/knowledge', label: 'Knowledge Library' },
       ],
     },
     { href: '/upload',        icon: Upload,        label: t('upload') },
@@ -135,27 +134,13 @@ function SectionLabel({ children }) {
 // ── Sidebar content ──────────────────────────────────────────────────────────
 
 function SidebarContent({ onNavigate }) {
-  const { user, logout, updateProfile } = useAuth();
+  const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
-  const { lang, setLanguage } = useLanguage();
   const { t } = useTranslation();
   const router = useRouter();
 
   const MAIN_NAV = buildNav(t);
   const isAdmin = user?.role === 'admin' || user?.role === 'moderator';
-
-  const LANG_OPTIONS = [
-    { code: 'english', flag: '🇬🇧', short: 'EN' },
-    { code: 'hausa',   flag: '🟢',  short: 'HA' },
-    { code: 'yoruba',  flag: '🔵',  short: 'YO' },
-    { code: 'igbo',    flag: '🟣',  short: 'IG' },
-    { code: 'pidgin',  flag: '🟠',  short: 'PD' },
-  ];
-
-  const handleLangChange = async (code) => {
-    setLanguage(code);
-    try { await updateProfile({ preferredLanguage: code }); } catch (_) {}
-  };
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -209,31 +194,6 @@ function SidebarContent({ onNavigate }) {
 
       {/* Footer */}
       <div className="p-2 space-y-1 shrink-0">
-        {/* Language switcher */}
-        <div className="px-3 py-1.5">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-1.5 flex items-center gap-1">
-            <Globe className="w-3 h-3" /> Language
-          </p>
-          <div className="flex gap-1 flex-wrap">
-            {LANG_OPTIONS.map(({ code, flag, short }) => (
-              <button
-                key={code}
-                onClick={() => handleLangChange(code)}
-                title={code.charAt(0).toUpperCase() + code.slice(1)}
-                className={cn(
-                  'flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold transition-all border',
-                  lang === code
-                    ? 'bg-primary/10 text-primary border-primary/30'
-                    : 'border-border/50 text-muted-foreground hover:bg-muted hover:text-foreground'
-                )}
-              >
-                <span>{flag}</span>
-                <span>{short}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
         <button
           className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
