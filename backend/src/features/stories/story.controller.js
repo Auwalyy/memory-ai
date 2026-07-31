@@ -45,14 +45,16 @@ const remove = async (req, res, next) => {
 
 const getEducationalContent = async (req, res, next) => {
   try {
-    const content = await storyService.generateEducationalContent(req.params.id);
+    const outputLanguage = req.query.outputLanguage || req.body.outputLanguage;
+    const content = await storyService.generateEducationalContent(req.params.id, outputLanguage);
     sendSuccess(res, { content });
   } catch (err) { next(err); }
 };
 
 const getChildrensVersion = async (req, res, next) => {
   try {
-    const version = await storyService.generateChildrensVersion(req.params.id);
+    const outputLanguage = req.query.outputLanguage || req.body.outputLanguage;
+    const version = await storyService.generateChildrensVersion(req.params.id, outputLanguage);
     sendSuccess(res, { version });
   } catch (err) { next(err); }
 };
@@ -73,7 +75,8 @@ const translate = async (req, res, next) => {
 
 const getPodcastScript = async (req, res, next) => {
   try {
-    const script = await storyService.generatePodcastScript(req.params.id);
+    const outputLanguage = req.query.outputLanguage || req.body.outputLanguage;
+    const script = await storyService.generatePodcastScript(req.params.id, outputLanguage);
     sendSuccess(res, { script });
   } catch (err) { next(err); }
 };

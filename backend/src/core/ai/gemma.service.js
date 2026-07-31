@@ -79,9 +79,9 @@ const gemmaService = {
     }
   },
 
-  async generateEducationalContent(story) {
+  async generateEducationalContent(story, outputLanguage) {
     try {
-      const { system, user } = prompts.generateEducationalContent(story);
+      const { system, user } = prompts.generateEducationalContent(story, outputLanguage);
       const raw = await generateJSON(system, user, 2048);
       return truncateStrings(parseJSON(raw), 600);
     } catch (err) {
@@ -91,9 +91,9 @@ const gemmaService = {
     }
   },
 
-  async generateChildrensVersion(story) {
+  async generateChildrensVersion(story, outputLanguage) {
     try {
-      const { system, user } = prompts.generateChildrensVersion(story);
+      const { system, user } = prompts.generateChildrensVersion(story, outputLanguage);
       const raw = await generateJSON(system, user, 1500);
       return truncateStrings(parseJSON(raw), 1500);
     } catch (err) {
@@ -154,9 +154,9 @@ const gemmaService = {
     }
   },
 
-  async generatePodcastScript(story) {
+  async generatePodcastScript(story, outputLanguage) {
     try {
-      const { system, user } = prompts.generatePodcastScript(story);
+      const { system, user } = prompts.generatePodcastScript(story, outputLanguage);
       const raw = await generateJSON(system, user, 2048);
       return truncateStrings(parseJSON(raw), 800);
     } catch (err) {

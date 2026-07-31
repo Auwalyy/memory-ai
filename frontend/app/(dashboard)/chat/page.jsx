@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback, forwardRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Send, Plus, MessageSquare, Sparkles, Trash2, Copy, Check, ChevronLeft, Menu, FileText } from 'lucide-react';
+import { Send, Plus, MessageSquare, Sparkles, Trash2, Copy, Check, Menu, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -58,37 +58,24 @@ function CopyButton({ text }) {
   );
 }
 
-// Strip ALL reasoning, planning, and meta preamble from AI responses
+// Strip reasoning/planning preamble from AI responses on the frontend as a safety net
 function cleanAIResponse(raw) {
   if (!raw) return raw;
-
-  // Remove entire blocks that look like internal reasoning wrapped in <think>...</think> or similar
   let text = raw
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
     .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
     .trimStart();
 
+  const metaLine = /^\s*(\*\s*)?(user (query|asks?|language|request)|my persona|goal:|persona:|drafting:|answer:|disclaimer:|context:|planning:|thought:|reasoning:|note:|internal:|ok[,.!]|alright[,.!]|sure[,.!]|let me|i will|i need|i should|i'll|here is|here's|certainly|of course|great[,!]|absolutely)/i;
+
   const lines = text.split('\n');
-  const metaPatterns = [
-    /^\s*[*\-]?\s*(user (query|asks?|language|request)|my persona|goal|persona|drafting|answer|disclaimer|context|planning|thought|reasoning|note to self|internal|analysis|step \d)/i,
-    /^\s*(user (query|asks?|language|request)|my persona|goal:|persona:|drafting:|answer:|disclaimer:|context:|planning:|thought:|reasoning:|note:|internal:|ok,|alright,|sure,|let me|i will|i need to|i should|i'll)/i,
-  ];
-
-  // Drop all leading lines that match meta patterns or are blank before real content
-  let startIdx = 0;
+  let start = 0;
   for (let i = 0; i < lines.length; i++) {
-    if (metaPatterns.some((p) => p.test(lines[i]))) {
-      startIdx = i + 1;
-    } else if (lines[i].trim()) {
-      break;
-    } else {
-      startIdx = i + 1; // skip leading blank lines
-    }
+    if (!lines[i].trim()) { start = i + 1; continue; }
+    if (metaLine.test(lines[i])) { start = i + 1; continue; }
+    break;
   }
-
-  return lines.slice(startIdx).join('\n')
-    .replace(/^\*\s*(User (query|asks?|request)|Goal|Persona|Drafting|Disclaimer|Planning|Reasoning)[^\n]*\n/gim, '')
-    .trimStart();
+  return lines.slice(start).join('\n').trimStart() || text;
 }
 
 function AIMessage({ content }) {
@@ -142,6 +129,25 @@ const SUGGESTED_PROMPTS_BY_LANG = {
     'Wetin be the meaning of kola nut for Nigerian culture?',
     'Tell me about Sokoto Caliphate history',
     'Compare Yoruba and Igbo traditions',
+  ],
+};
+
+const DOC_PROMPTS = {
+  hausa: [
+    'Menene darasi na ɗabi\'a?',
+    'Bayyana wannan a Hausa mai sauƙi',
+    'Taƙaita wannan a Turanci',
+    'Menene ma\'anar al\'adu?',
+    'Menene haɗin kai da al\'adun Hausa?',
+    'Fitar da karin magana daga wannan',
+  ],
+  default: [
+    'What is the moral lesson?',
+    'Explain this in simple Hausa',
+    'Summarize this in English',
+    'What is the cultural meaning?',
+    'How does this connect to Hausa traditions?',
+    'Extract proverbs from this document',
   ],
 };
 
@@ -204,6 +210,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [docSessionStarted, setDocSessionStarted] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const queryClient = useQueryClient();
@@ -212,7 +219,6 @@ export default function ChatPage() {
   const { lang } = useLanguage();
   const searchParams = useSearchParams();
 
-  // Parse uploadId from query param (set when user clicks "Ask AI" on any document in Knowledge Library)
   const uploadId = searchParams.get('uploadId');
   const uploadTitle = searchParams.get('uploadTitle') ? decodeURIComponent(searchParams.get('uploadTitle')) : null;
 
@@ -231,14 +237,6 @@ export default function ChatPage() {
     if (sessionData?.messages) setMessages(sessionData.messages);
   }, [sessionData]);
 
-  // Auto-start a session when arriving from Knowledge Library with a document
-  useEffect(() => {
-    if (uploadId && !activeSessionId && !newSessionMutation.isPending) {
-      newSessionMutation.mutate();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uploadId]);
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -254,6 +252,15 @@ export default function ChatPage() {
     },
     onError: () => toast.error('Failed to create session'),
   });
+
+  // Auto-start session when arriving from Knowledge Library with a document
+  useEffect(() => {
+    if (uploadId && !docSessionStarted && !newSessionMutation.isPending) {
+      setDocSessionStarted(true);
+      newSessionMutation.mutate();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uploadId]);
 
   const sendMutation = useMutation({
     mutationFn: ({ sessionId, message }) =>
@@ -290,6 +297,22 @@ export default function ChatPage() {
     sendMutation.mutate({ sessionId: activeSessionId, message: msg });
   }, [input, activeSessionId, sendMutation]);
 
+  // Send a doc prompt — creates session first if needed
+  const handleDocPrompt = useCallback(async (prompt) => {
+    if (sendMutation.isPending) return;
+    let sessionId = activeSessionId;
+    if (!sessionId) {
+      try {
+        const session = await newSessionMutation.mutateAsync();
+        sessionId = session._id;
+      } catch {
+        return;
+      }
+    }
+    setMessages((prev) => [...prev, { role: 'user', content: prompt }]);
+    sendMutation.mutate({ sessionId, message: prompt });
+  }, [activeSessionId, newSessionMutation, sendMutation]);
+
   const sessions = sessionsData || [];
 
   const sidebarProps = {
@@ -303,10 +326,13 @@ export default function ChatPage() {
     t,
   };
 
+  const docPrompts = lang === 'hausa' ? DOC_PROMPTS.hausa : DOC_PROMPTS.default;
+  const suggestedPrompts = SUGGESTED_PROMPTS_BY_LANG[lang] || SUGGESTED_PROMPTS_BY_LANG.hausa;
+
   return (
     <div className="page-container">
-      {/* Full-height chat layout */}
-      <div className="flex gap-3 h-[calc(100dvh-7rem)] md:h-[calc(100dvh-5rem)]">
+      {/* Full-height chat layout — accounts for mobile top bar (56px) + bottom tabs (64px) */}
+      <div className="flex gap-3 h-[calc(100dvh-8rem)] md:h-[calc(100dvh-5rem)]">
 
         {/* Desktop sessions sidebar */}
         <aside className="hidden md:flex w-52 flex-col border border-border/50 rounded-xl bg-card overflow-hidden shrink-0">
@@ -317,8 +343,8 @@ export default function ChatPage() {
         <Card className="flex-1 flex flex-col border-border/50 overflow-hidden min-w-0">
           {!activeSessionId ? (
             /* Empty state */
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-6 sm:p-10">
-              <div className="w-14 h-14 rounded-2xl gradient-brand flex items-center justify-center mb-4">
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-5 sm:p-10 overflow-y-auto">
+              <div className="w-14 h-14 rounded-2xl gradient-brand flex items-center justify-center mb-4 shrink-0">
                 <Sparkles className="w-7 h-7 text-white" />
               </div>
               <h1 className="font-serif text-xl sm:text-2xl font-bold mb-2">AI Cultural Chat</h1>
@@ -339,7 +365,7 @@ export default function ChatPage() {
                 Start Conversation
               </Button>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-sm w-full">
-                {(SUGGESTED_PROMPTS_BY_LANG[lang] || SUGGESTED_PROMPTS_BY_LANG.hausa).map((prompt) => (
+                {suggestedPrompts.map((prompt) => (
                   <button
                     key={prompt}
                     onClick={async () => {
@@ -357,7 +383,7 @@ export default function ChatPage() {
           ) : (
             <>
               {/* Chat header (mobile) */}
-              <div className="md:hidden flex items-center gap-2 px-4 py-2.5 border-b border-border/50">
+              <div className="md:hidden flex items-center gap-2 px-4 py-2.5 border-b border-border/50 shrink-0">
                 <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
                   <SheetTrigger asChild>
                     <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0">
@@ -375,7 +401,7 @@ export default function ChatPage() {
 
               {/* Document context banner */}
               {uploadId && (
-                <div className="mx-4 mt-3 mb-1 flex items-start gap-2 px-3 py-2.5 rounded-xl bg-primary/8 border border-primary/20">
+                <div className="mx-3 mt-3 mb-1 flex items-start gap-2 px-3 py-2.5 rounded-xl bg-primary/8 border border-primary/20 shrink-0">
                   <FileText className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-primary truncate">{uploadTitle || 'Uploaded Document'}</p>
@@ -388,13 +414,13 @@ export default function ChatPage() {
 
               {/* Messages */}
               <div
-                className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4"
+                className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-4"
                 role="log"
                 aria-live="polite"
                 aria-label="Conversation messages"
               >
                 {messages.length === 0 && !sendMutation.isPending && (
-                  <div className="text-center py-8">
+                  <div className="text-center py-6">
                     {uploadId ? (
                       <>
                         <div className="w-10 h-10 rounded-xl gradient-brand flex items-center justify-center mx-auto mb-3">
@@ -405,25 +431,12 @@ export default function ChatPage() {
                           {lang === 'hausa' ? 'Zaɓi tambaya ko rubuta naka' : 'Choose a question or type your own'}
                         </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-sm mx-auto">
-                          {(lang === 'hausa' ? [
-                            'Menene darasi na ɗabi\'a?',
-                            'Bayyana wannan a Hausa mai sauƙi',
-                            'Taƙaita wannan a Turanci',
-                            'Menene ma\'anar al\'adu?',
-                            'Menene haɗin kai da al\'adun Hausa?',
-                            'Fitar da karin magana daga wannan',
-                          ] : [
-                            'What is the moral lesson?',
-                            'Explain this in simple Hausa',
-                            'Summarize this in English',
-                            'What is the cultural meaning?',
-                            'How does this connect to Hausa traditions?',
-                            'Extract proverbs from this document',
-                          ]).map((prompt) => (
+                          {docPrompts.map((prompt) => (
                             <button
                               key={prompt}
-                              onClick={() => handleSend(prompt)}
-                              className="text-left text-xs p-3 rounded-xl border border-border/50 hover:border-primary/40 hover:bg-muted/50 transition-colors text-muted-foreground"
+                              onClick={() => handleDocPrompt(prompt)}
+                              disabled={sendMutation.isPending || newSessionMutation.isPending}
+                              className="text-left text-xs p-3 rounded-xl border border-border/50 hover:border-primary/40 hover:bg-muted/50 transition-colors text-muted-foreground disabled:opacity-50"
                             >
                               {prompt}
                             </button>
@@ -434,7 +447,7 @@ export default function ChatPage() {
                       <>
                         <p className="text-muted-foreground text-sm mb-4">Ask in any language — upload in Hausa, ask in English, switch to Yoruba.</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-sm mx-auto">
-                          {(SUGGESTED_PROMPTS_BY_LANG[lang] || SUGGESTED_PROMPTS_BY_LANG.hausa).map((prompt) => (
+                          {suggestedPrompts.map((prompt) => (
                             <button
                               key={prompt}
                               onClick={() => handleSend(prompt)}
@@ -503,7 +516,7 @@ export default function ChatPage() {
               </div>
 
               {/* Input bar */}
-              <div className="p-3 sm:p-4 border-t border-border/50">
+              <div className="p-3 sm:p-4 border-t border-border/50 shrink-0">
                 <div className="flex items-end gap-2 rounded-xl border border-border bg-background px-3 sm:px-4 py-2 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1">
                   <AutoResizeTextarea
                     ref={inputRef}

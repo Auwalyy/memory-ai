@@ -1,101 +1,29 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   GraduationCap, Baby, Sparkles, Mic, Globe,
-  Copy, Check, Download, RefreshCw, Eye, FileText, ChevronDown,
+  ChevronDown, ChevronUp, Copy, Check, Download, Languages,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import { SUPPORTED_LANGUAGES } from '@/lib/constants';
-import { useTranslation } from '@/hooks/useTranslation';
-import { useLanguage } from '@/hooks/useLanguage';
 
-// ── Sample data ───────────────────────────────────────────────────────────────
+const LANG_LABELS = {
+  hausa: '🟢 Hausa', yoruba: '🔵 Yoruba', igbo: '🟣 Igbo',
+  english: '⚪ English', pidgin: '🟠 Pidgin',
+};
 
-const SAMPLE_TEXTS = [
-  {
-    label: 'Tortoise & Birds (Igbo)',
-    language: 'igbo',
-    text: `Long ago, Mbe the tortoise heard that the birds were invited to a feast in the sky. He begged each bird for one feather until he had enough to fly. Before they left, he told everyone: "In the sky, we must use new names. My name shall be All of You." When the feast was served and the host said the food was for all of you, Mbe ate everything alone. The angry birds took back their feathers. Mbe fell from the sky and his shell cracked into pieces — which is why the tortoise shell has many lines today. This story teaches that greed and deception lead to one's own downfall.`,
-  },
-  {
-    label: 'Sango God of Thunder (Yoruba)',
-    language: 'yoruba',
-    text: `Sango was the third Alaafin of the Oyo Empire, a real historical figure who became deified after his death. He was known for his fierce temper, his love of drumming, and his supernatural ability to call down lightning. According to oral tradition, Sango accidentally destroyed his own palace with lightning while experimenting with a powerful charm. Overcome with grief, he walked into the forest and disappeared. His followers declared: "Oba Koso" — the king did not hang. Today, Sango is worshipped across Yorubaland and in the African diaspora as Shango in Trinidad, Cuba, and Brazil. His symbol is the double-headed axe (oshe), and his colours are red and white.`,
-  },
-  {
-    label: 'Hausa Patience Proverbs',
-    language: 'hausa',
-    text: `Hausa elders say: "Hankali ya fi karfi" — patience is stronger than force. This wisdom comes from the story of the farmer who tried to pull his crops out of the ground to make them grow faster, only to destroy them. His neighbour who waited and tended carefully harvested three times as much. Another proverb says "Mutum ya fi dukiyarsa" — a person is worth more than their wealth. And "Duk wanda ya yi gaba da ruwa, ruwa zai yi gaba da shi" — whoever fights against water, water will fight against them. These proverbs guide community life in northern Nigeria.`,
-  },
-];
-
-// ── Export helpers ────────────────────────────────────────────────────────────
-
-function buildPlainText(data, type) {
-  if (type === 'children') {
-    return [
-      data.title || "Children's Story",
-      '',
-      data.story || data.content || '',
-      '',
-      data.moralLesson ? `Moral Lesson: ${data.moralLesson}` : '',
-      ...(data.illustrationSuggestions?.map((s) => `• ${s}`) || []),
-    ].filter(Boolean).join('\n');
-  }
-  if (type === 'podcast') {
-    return [
-      data.episodeTitle || 'Podcast Script',
-      data.duration ? `Duration: ${data.duration}` : '',
-      '',
-      data.intro || '',
-      ...(data.segments?.flatMap((s) => [`\n[${s.title}]`, s.script]) || []),
-      '',
-      data.outro || '',
-      data.showNotes ? `\nShow Notes:\n${data.showNotes}` : '',
-    ].filter(Boolean).join('\n');
-  }
-  return JSON.stringify(data, null, 2);
-}
-
-function exportAsDocx(text, filename) {
-  // Simple RTF-based .doc that Word/LibreOffice opens correctly
-  const rtf = `{\\rtf1\\ansi\\deff0\n{\\fonttbl{\\f0 Times New Roman;}}\n\\f0\\fs24\n${text.replace(/\n/g, '\\par\n').replace(/[\\\\{}]/g, '\\\\$&')}\n}`;
-  const blob = new Blob([rtf], { type: 'application/msword' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename + '.doc'; a.click();
-  URL.revokeObjectURL(url);
-  toast.success('Exported as .doc');
-}
-
-function exportAsPdf(text, filename) {
-  // Open print dialog with formatted content — browser saves as PDF
-  const win = window.open('', '_blank');
-  if (!win) { toast.error('Allow popups to export PDF'); return; }
-  win.document.write(`
-    <html><head><title>${filename}</title>
-    <style>
-      body { font-family: Georgia, serif; max-width: 700px; margin: 40px auto; line-height: 1.7; font-size: 14px; color: #1a1a1a; }
-      h1 { font-size: 20px; margin-bottom: 8px; }
-      pre { white-space: pre-wrap; font-family: inherit; }
-    </style></head>
-    <body><pre>${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
-    <script>window.onload=()=>{window.print();window.close();}<\/script>
-    </body></html>
-  `);
-  win.document.close();
-}
-
-// ── Shared UI helpers ─────────────────────────────────────────────────────────
+const AUDIENCE_LABELS = {
+  primary: 'Primary School', secondary: 'Secondary School',
+  university: 'University', adult: 'Adult Learners', children: 'Children (5–10)',
+};
 
 function CopyBtn({ text }) {
   const [copied, setCopied] = useState(false);
@@ -108,587 +36,400 @@ function CopyBtn({ text }) {
   );
 }
 
-function ExportButtons({ data, type, filename }) {
-  const text = buildPlainText(data, type);
+function ExportBtn({ data, filename }) {
   return (
-    <div className="flex gap-1.5">
-      <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs"
-        onClick={() => exportAsPdf(text, filename)}>
-        <Download className="w-3 h-3" /> PDF
-      </Button>
-      <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs"
-        onClick={() => exportAsDocx(text, filename)}>
-        <Download className="w-3 h-3" /> DOCX
-      </Button>
-    </div>
+    <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs"
+      onClick={() => {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+        URL.revokeObjectURL(url);
+        toast.success('Exported!');
+      }}>
+      <Download className="w-3 h-3" /> Export
+    </Button>
   );
 }
 
-function SLabel({ children }) {
+function ResultSection({ title, children, copyText, exportData, exportFilename }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <Card className="border-border/50">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <CardTitle className="text-sm sm:text-base flex items-center gap-2 cursor-pointer flex-1 min-w-0"
+            onClick={() => setOpen((v) => !v)}>
+            <span className="truncate">{title}</span>
+            {open ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
+          </CardTitle>
+          {open && (
+            <div className="flex items-center gap-1.5 shrink-0">
+              {copyText && <CopyBtn text={copyText} />}
+              {exportData && <ExportBtn data={exportData} filename={exportFilename || 'export.json'} />}
+            </div>
+          )}
+        </div>
+      </CardHeader>
+      {open && <CardContent className="space-y-4 pt-0">{children}</CardContent>}
+    </Card>
+  );
+}
+
+function SectionLabel({ children }) {
   return <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">{children}</p>;
 }
 
-// ── Per-tab generate button + output language ─────────────────────────────────
-
-function TabControls({ mutation, onGenerate, disabled, outputLang, setOutputLang, label, icon: Icon }) {
-  const hasResult = !!mutation.data;
-  const resultRef = useRef(null);
-
-  const handleGenerate = useCallback(() => {
-    onGenerate();
-    // Scroll to result after a short delay for the data to arrive
-    setTimeout(() => {
-      resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 800);
-  }, [onGenerate]);
-
-  return { hasResult, resultRef, handleGenerate };
-}
-
-// ── Result panels ─────────────────────────────────────────────────────────────
-
-function LessonResult({ data }) {
+function AILoading({ message }) {
   return (
-    <div className="space-y-4">
-      {data.lessonTitle && <h3 className="font-semibold text-base">{data.lessonTitle}</h3>}
-      {data.introduction && (
-        <div><SLabel>Introduction</SLabel>
-          <p className="text-sm text-muted-foreground">{data.introduction}</p></div>
-      )}
-      {data.learningObjectives?.length > 0 && (
-        <div><SLabel>Learning Objectives</SLabel>
-          <ul className="space-y-1">
-            {data.learningObjectives.map((obj, i) => (
-              <li key={i} className="text-sm text-muted-foreground flex gap-2">
-                <span className="text-primary font-bold shrink-0">{i + 1}.</span> {obj}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {data.keyVocabulary?.length > 0 && (
-        <div><SLabel>Key Vocabulary</SLabel>
-          <div className="flex flex-wrap gap-2">
-            {data.keyVocabulary.map((v) => (
-              <div key={v.word} className="bg-muted rounded-lg px-3 py-1.5 text-xs">
-                <span className="font-medium">{v.word}</span>
-                {v.language && <span className="text-muted-foreground ml-1">({v.language})</span>}
-                <span className="text-muted-foreground"> — {v.definition}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {data.quiz?.length > 0 && (
-        <div><SLabel>Quiz Questions</SLabel>
-          <div className="space-y-3">
-            {data.quiz.map((q, i) => (
-              <div key={i} className="bg-muted rounded-xl p-4 text-sm">
-                <div className="font-medium mb-2">{i + 1}. {q.question}</div>
-                <div className="space-y-1 text-muted-foreground mb-2">
-                  {q.options?.map((opt) => <div key={opt}>{opt}</div>)}
-                </div>
-                <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-xs">
-                  Answer: {q.correctAnswer}
-                </Badge>
-                {q.explanation && <p className="text-xs text-muted-foreground mt-1">{q.explanation}</p>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {data.discussionQuestions?.length > 0 && (
-        <div><SLabel>Discussion Questions</SLabel>
-          <ul className="space-y-1">
-            {data.discussionQuestions.map((q, i) => (
-              <li key={i} className="text-sm text-muted-foreground">• {q}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ChildrenResult({ data }) {
-  return (
-    <div className="space-y-4">
-      {data.title && <h3 className="font-serif text-xl font-bold">{data.title}</h3>}
-      <p className="leading-relaxed whitespace-pre-wrap text-sm">{data.story || data.content}</p>
-      {data.moralLesson && (
-        <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 text-sm">
-          <span className="font-semibold">Moral Lesson: </span>{data.moralLesson}
-        </div>
-      )}
-      {data.illustrationSuggestions?.length > 0 && (
-        <div><SLabel>Illustration Suggestions</SLabel>
-          <ul className="space-y-1">
-            {data.illustrationSuggestions.map((s, i) => (
-              <li key={i} className="text-xs text-muted-foreground">• {s}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PodcastResult({ data }) {
-  return (
-    <div className="space-y-4 text-sm">
-      {data.episodeTitle && (
-        <div>
-          <p className="font-semibold text-base">{data.episodeTitle}</p>
-          {data.duration && <p className="text-xs text-muted-foreground">Duration: {data.duration}</p>}
-        </div>
-      )}
-      {data.intro && (
-        <div><SLabel>Intro</SLabel>
-          <div className="bg-muted rounded-xl p-4 whitespace-pre-wrap">{data.intro}</div>
-        </div>
-      )}
-      {data.segments?.map((seg, i) => (
-        <div key={i} className="border border-border/50 rounded-xl p-4">
-          <p className="font-medium mb-1">{seg.title}</p>
-          {seg.duration && <p className="text-xs text-muted-foreground mb-2">{seg.duration}</p>}
-          <p className="text-muted-foreground whitespace-pre-wrap">{seg.script}</p>
-        </div>
-      ))}
-      {data.outro && (
-        <div><SLabel>Outro</SLabel>
-          <div className="bg-muted rounded-xl p-4 whitespace-pre-wrap">{data.outro}</div>
-        </div>
-      )}
-      {data.showNotes && (
-        <div><SLabel>Show Notes</SLabel>
-          <p className="text-muted-foreground">{data.showNotes}</p>
-        </div>
-      )}
-      {data.hashtags?.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {data.hashtags.map((h) => <Badge key={h} variant="secondary" className="text-xs">{h}</Badge>)}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CrossLangResult({ data }) {
-  return (
-    <div className="space-y-4">
-      {data.culturalInsights && (
-        <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
-          <p className="text-sm text-muted-foreground">{data.culturalInsights}</p>
-        </div>
-      )}
-      {['hausaConnections', 'yorubaConnections', 'igboConnections'].map((key) => {
-        const lang = key.replace('Connections', '');
-        const items = data[key];
-        if (!items?.length) return null;
-        return (
-          <div key={key}>
-            <SLabel>{lang}</SLabel>
-            <div className="space-y-2">
-              {items.map((item, i) => (
-                <div key={i} className="bg-muted rounded-lg p-3 text-sm">
-                  <p className="font-medium">{item.title}</p>
-                  <p className="text-muted-foreground text-xs mt-0.5">{item.similarity}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── Tab panel wrapper ─────────────────────────────────────────────────────────
-
-function TabPanel({ mutation, onGenerate, disabled, outputLang, setOutputLang, showAudience, audience, setAudience, resultNode, exportType, exportFilename, copyText }) {
-  const resultRef = useRef(null);
-  const hasResult = !!mutation.data;
-
-  const handleGenerate = () => {
-    onGenerate();
-    setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
-  };
-
-  return (
-    <div className="space-y-4">
-      {/* Controls */}
-      <div className="flex items-center gap-2 flex-wrap p-4 rounded-xl border border-border/50 bg-muted/30">
-        <div className="flex items-center gap-2 flex-wrap flex-1">
-          <div className="space-y-0.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Output Language</p>
-            <Select value={outputLang} onValueChange={setOutputLang}>
-              <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {SUPPORTED_LANGUAGES.map((l) => (
-                  <SelectItem key={l} value={l} className="capitalize text-xs">{l}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {showAudience && (
-            <div className="space-y-0.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Audience</p>
-              <Select value={audience} onValueChange={setAudience}>
-                <SelectTrigger className="w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {['primary', 'secondary', 'university', 'adult', 'children'].map((a) => (
-                    <SelectItem key={a} value={a} className="capitalize text-xs">{a}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {hasResult && (
-            <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs"
-              onClick={() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
-              <Eye className="w-3.5 h-3.5" /> View Result
-            </Button>
-          )}
-          <Button
-            size="sm"
-            className={`gap-1.5 h-8 text-xs ${hasResult ? 'variant-outline border border-border' : 'gradient-brand text-white border-0'}`}
-            onClick={handleGenerate}
-            disabled={disabled || mutation.isPending}
-          >
-            {mutation.isPending
-              ? <><Sparkles className="w-3.5 h-3.5 animate-spin" /> Generating…</>
-              : hasResult
-              ? <><RefreshCw className="w-3.5 h-3.5" /> Regenerate</>
-              : <><Sparkles className="w-3.5 h-3.5" /> Generate</>
-            }
-          </Button>
-        </div>
+    <div className="flex items-center gap-3 py-4 text-muted-foreground">
+      <Sparkles className="w-4 h-4 animate-spin text-primary shrink-0" />
+      <div>
+        <p className="text-sm font-medium text-foreground">{message}</p>
+        <p className="text-xs mt-0.5">This takes 15–40 seconds. Please wait…</p>
       </div>
-
-      {/* Generating state */}
-      {mutation.isPending && (
-        <div className="flex items-center gap-3 py-6 text-muted-foreground">
-          <Sparkles className="w-5 h-5 animate-spin text-primary shrink-0" />
-          <div>
-            <p className="text-sm font-medium text-foreground">Gemma AI is generating…</p>
-            <p className="text-xs mt-0.5">This takes 15–40 seconds. Please wait.</p>
-          </div>
-        </div>
-      )}
-
-      {/* Result */}
-      {hasResult && !mutation.isPending && (
-        <div ref={resultRef}>
-          <Card className="border-border/50">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <CardTitle className="text-sm">Result</CardTitle>
-                <div className="flex items-center gap-1.5">
-                  {copyText && <CopyBtn text={copyText(mutation.data)} />}
-                  {exportType && (
-                    <ExportButtons data={mutation.data} type={exportType} filename={exportFilename} />
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              {resultNode(mutation.data)}
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   );
 }
-
-// ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function EducationPage() {
-  const { t } = useTranslation();
-  const { lang } = useLanguage();
   const [content, setContent] = useState('');
-  const [inputLang, setInputLang] = useState('hausa');
+  const [inputLanguage, setInputLanguage] = useState('english');
+  const [outputLanguage, setOutputLanguage] = useState('english');
   const [audience, setAudience] = useState('secondary');
-  const [activeTab, setActiveTab] = useState('lesson');
-  const [source, setSource] = useState('paste'); // 'paste' | 'upload'
-  const [selectedUploadId, setSelectedUploadId] = useState('');
-
-  // Fetch all uploads (platform-wide) for the document picker
-  const { data: uploadsData } = useQuery({
-    queryKey: ['education-uploads'],
-    queryFn: () => api.get('/uploads?limit=100').then((r) => r.data.data || []),
-  });
-  const analyzedUploads = (uploadsData || []).filter((u) => u.analysisStatus === 'completed' && u.extractedText);
-
-  const loadUpload = (uploadId) => {
-    const upload = analyzedUploads.find((u) => u._id === uploadId);
-    if (!upload) return;
-    setSelectedUploadId(uploadId);
-    setContent(upload.extractedText || upload.ingestion?.summaries?.medium || upload.ingestion?.summaries?.short || '');
-    setInputLang(upload.ingestion?.detectedLanguage || 'hausa');
-    toast.success(`Loaded: ${upload.ingestion?.metadata?.title || upload.originalName}`);
-  };
-
-  // Per-tab output language
-  const [lessonLang, setLessonLang] = useState('hausa');
-  const [childrenLang, setChildrenLang] = useState('hausa');
-  const [podcastLang, setPodcastLang] = useState('hausa');
-  const [crossLang, setCrossLang] = useState('hausa');
 
   const lessonMutation = useMutation({
-    mutationFn: () => api.post('/education/lesson', { content, audience, language: lessonLang }).then((r) => r.data.data.lesson),
+    mutationFn: () => api.post('/education/lesson', {
+      content, language: inputLanguage, outputLanguage, audience,
+    }).then((r) => r.data.data.lesson),
     onError: (err) => toast.error(err.response?.data?.message || 'Failed to generate lesson'),
   });
+
   const childrenMutation = useMutation({
-    mutationFn: () => api.post('/education/childrens-story', { content, language: childrenLang }).then((r) => r.data.data.childrensStory),
+    mutationFn: () => api.post('/education/childrens-story', {
+      content, language: inputLanguage, outputLanguage,
+    }).then((r) => r.data.data.childrensStory),
     onError: (err) => toast.error(err.response?.data?.message || 'Failed to generate story'),
   });
+
   const podcastMutation = useMutation({
-    mutationFn: () => api.post('/education/podcast', { content, language: podcastLang }).then((r) => r.data.data.script),
+    mutationFn: () => api.post('/education/podcast', {
+      content, language: inputLanguage, outputLanguage,
+    }).then((r) => r.data.data.script),
     onError: (err) => toast.error(err.response?.data?.message || 'Failed to generate podcast'),
   });
+
   const crossLangMutation = useMutation({
-    mutationFn: () => api.post('/education/cross-language', { content, language: crossLang }).then((r) => r.data.data.connections),
+    mutationFn: () => api.post('/education/cross-language', {
+      content, language: inputLanguage,
+    }).then((r) => r.data.data.connections),
     onError: (err) => toast.error(err.response?.data?.message || 'Failed to find connections'),
   });
 
   const disabled = !content.trim();
+  const anyPending = lessonMutation.isPending || childrenMutation.isPending || podcastMutation.isPending || crossLangMutation.isPending;
 
-  const TAB_BADGES = [
-    { value: 'lesson',    mutation: lessonMutation },
-    { value: 'children',  mutation: childrenMutation },
-    { value: 'podcast',   mutation: podcastMutation },
-    { value: 'cross',     mutation: crossLangMutation },
+  const ACTION_BUTTONS = [
+    { label: 'Lesson Plan', loadingLabel: 'Generating…', icon: GraduationCap, mutation: lessonMutation, gradient: true },
+    { label: "Children's Story", loadingLabel: 'Generating…', icon: Baby, mutation: childrenMutation },
+    { label: 'Podcast Script', loadingLabel: 'Generating…', icon: Mic, mutation: podcastMutation },
+    { label: 'Cross-Language', loadingLabel: 'Analyzing…', icon: Globe, mutation: crossLangMutation },
   ];
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-5">
       <div>
-        <h1 className="font-serif text-2xl sm:text-3xl font-bold">{t('educationTitle')}</h1>
-        <p className="text-muted-foreground text-sm mt-0.5">{t('educationDesc')}</p>
+        <h1 className="font-serif text-2xl sm:text-3xl font-bold">AI Content Engine</h1>
+        <p className="text-muted-foreground text-sm mt-0.5">
+          Transform indigenous knowledge into lessons, stories, podcasts &amp; cultural connections
+        </p>
       </div>
 
       {/* Input card */}
       <Card className="border-border/50">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm sm:text-base flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-primary" /> {t('pasteContent')}
+            <Sparkles className="w-4 h-4 text-primary" /> Paste Indigenous Knowledge Content
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <Textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Paste a folktale, proverb, oral history, or any indigenous knowledge content here…"
+            rows={5}
+            className="resize-none"
+          />
 
-          {/* Source toggle */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setSource('paste')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                source === 'paste' ? 'gradient-brand text-white border-transparent' : 'border-border text-muted-foreground hover:bg-muted'
-              }`}
-            >
-              <Sparkles className="w-3 h-3" />
-              {lang === 'hausa' ? 'Liƙa Rubutu' : 'Paste Text'}
-            </button>
-            <button
-              onClick={() => setSource('upload')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                source === 'upload' ? 'gradient-brand text-white border-transparent' : 'border-border text-muted-foreground hover:bg-muted'
-              }`}
-            >
-              <FileText className="w-3 h-3" />
-              {lang === 'hausa' ? 'Amfani da Takarda da aka Loda' : 'Use Uploaded Document'}
-              {analyzedUploads.length > 0 && (
-                <span className="ml-1 bg-white/20 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
-                  {analyzedUploads.length}
-                </span>
-              )}
-            </button>
-          </div>
-
-          {/* Uploaded document picker */}
-          {source === 'upload' && (
-            <div className="space-y-3">
-              {analyzedUploads.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground border border-dashed border-border rounded-xl">
-                  <FileText className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">{lang === 'hausa' ? 'Babu takaddun da aka nazarta tukuna' : 'No analyzed documents yet'}</p>
-                  <p className="text-xs mt-1">{lang === 'hausa' ? 'Loda takarda a shafin Loda' : 'Upload a document on the Upload page first'}</p>
-                </div>
-              ) : (
-                <div className="grid gap-2 max-h-64 overflow-y-auto pr-1">
-                  {analyzedUploads.map((upload) => {
-                    const title = upload.ingestion?.metadata?.title || upload.originalName;
-                    const lang_ = upload.ingestion?.detectedLanguage;
-                    const summary = upload.ingestion?.summaries?.short;
-                    const isSelected = selectedUploadId === upload._id;
-                    return (
-                      <button
-                        key={upload._id}
-                        onClick={() => loadUpload(upload._id)}
-                        className={`w-full text-left p-3 rounded-xl border-2 transition-all ${
-                          isSelected
-                            ? 'border-primary bg-primary/5'
-                            : 'border-border/50 hover:border-primary/40 hover:bg-muted/40'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
-                            <p className="text-sm font-medium truncate">{title}</p>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {lang_ && (
-                              <Badge variant="secondary" className="text-xs capitalize">{lang_}</Badge>
-                            )}
-                            {isSelected && (
-                              <span className="text-xs text-primary font-semibold">✓ Loaded</span>
-                            )}
-                          </div>
-                        </div>
-                        {summary && (
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{summary}</p>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-              {selectedUploadId && content && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/20">
-                  <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
-                  <p className="text-xs text-primary flex-1 truncate">
-                    {lang === 'hausa' ? 'An loda rubutu — shirye don ƙirƙira' : 'Document loaded — ready to generate'}
-                  </p>
-                  <button
-                    onClick={() => { setContent(''); setSelectedUploadId(''); }}
-                    className="text-xs text-muted-foreground hover:text-destructive transition-colors"
-                  >
-                    {lang === 'hausa' ? 'Share' : 'Clear'}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Paste mode */}
-          {source === 'paste' && (
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {lang === 'hausa' ? 'Gwada samfuri' : 'Try a sample'}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {SAMPLE_TEXTS.map((sample, i) => (
-                    <button key={i} type="button"
-                      onClick={() => { setContent(sample.text); setInputLang(sample.language); }}
-                      className={['filter-chip text-xs', content === sample.text ? 'active' : ''].join(' ')}>
-                      {sample.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <Textarea value={content} onChange={(e) => setContent(e.target.value)}
-                placeholder={t('pastePlaceholder')} rows={6} className="resize-none" />
-            </div>
-          )}
-
-          {/* Content language + word count — shown in both modes */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="space-y-0.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                {lang === 'hausa' ? 'Harshen Abun Ciki' : 'Content Language'}
-              </p>
-              <Select value={inputLang} onValueChange={setInputLang}>
-                <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
+          {/* Language controls */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Content Language</label>
+              <Select value={inputLanguage} onValueChange={setInputLanguage}>
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {SUPPORTED_LANGUAGES.map((l) => (
-                    <SelectItem key={l} value={l} className="capitalize text-xs">{l}</SelectItem>
+                    <SelectItem key={l} value={l}>{LANG_LABELS[l] || l}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            {content.trim() && (
-              <p className="text-xs text-muted-foreground mt-4">
-                {content.split(' ').filter(Boolean).length} {lang === 'hausa' ? 'kalmomi' : 'words'} · {lang === 'hausa' ? 'Zaɓi shafin ƙasa don ƙirƙira' : 'Choose a tab below to generate'}
-              </p>
-            )}
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                <Languages className="w-3 h-3" /> Output Language
+              </label>
+              <Select value={outputLanguage} onValueChange={setOutputLanguage}>
+                <SelectTrigger className="h-9 border-primary/40 ring-1 ring-primary/20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SUPPORTED_LANGUAGES.map((l) => (
+                    <SelectItem key={l} value={l}>{LANG_LABELS[l] || l}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Audience</label>
+              <Select value={audience} onValueChange={setAudience}>
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(AUDIENCE_LABELS).map(([v, label]) => (
+                    <SelectItem key={v} value={v}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
+          {/* Output language notice */}
+          {outputLanguage !== 'english' && (
+            <div className="flex items-center gap-2 text-xs text-primary bg-primary/5 border border-primary/20 rounded-lg px-3 py-2">
+              <Languages className="w-3.5 h-3.5 shrink-0" />
+              Gemma will generate all content in <strong className="capitalize">{outputLanguage}</strong>
+            </div>
+          )}
+
+          {/* Action buttons — 2×2 on mobile, 4 across on sm+ */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {ACTION_BUTTONS.map(({ label, loadingLabel, icon: Icon, mutation, gradient }) => (
+              <button
+                key={label}
+                onClick={() => mutation.mutate()}
+                disabled={disabled || anyPending}
+                className={[
+                  'flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border text-xs font-medium transition-all',
+                  'disabled:opacity-50 disabled:cursor-not-allowed',
+                  gradient
+                    ? 'gradient-brand text-white border-transparent'
+                    : 'border-border bg-background hover:bg-muted hover:border-primary/40 text-foreground',
+                ].join(' ')}
+              >
+                <Icon className="w-5 h-5" />
+                {mutation.isPending ? loadingLabel : label}
+              </button>
+            ))}
+          </div>
+
+          {anyPending && (
+            <p className="text-xs text-muted-foreground flex items-center gap-2 animate-pulse">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              Gemma AI is generating in <strong className="capitalize">{outputLanguage}</strong>… 15–40 seconds.
+            </p>
+          )}
         </CardContent>
       </Card>
 
-      {/* Output tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full sm:w-auto">
-          {TAB_BADGES.map(({ value, mutation }) => (
-            <TabsTrigger key={value} value={value} className="gap-1.5 relative">
-              {value === 'lesson'   && <><GraduationCap className="w-3.5 h-3.5" /> Lesson Plan</>}
-              {value === 'children' && <><Baby className="w-3.5 h-3.5" /> Children&apos;s Story</>}
-              {value === 'podcast'  && <><Mic className="w-3.5 h-3.5" /> Podcast</>}
-              {value === 'cross'    && <><Globe className="w-3.5 h-3.5" /> Cross-Language</>}
-              {mutation.data && (
-                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500 border-2 border-background" />
-              )}
-            </TabsTrigger>
+      {/* Lesson Plan Result */}
+      {lessonMutation.isPending && <AILoading message="Generating lesson plan…" />}
+      {lessonMutation.data && (
+        <ResultSection
+          title={`📚 Lesson Plan: ${lessonMutation.data.lessonTitle || ''}`}
+          exportData={lessonMutation.data}
+          exportFilename="lesson-plan.json"
+          copyText={[
+            lessonMutation.data.lessonTitle,
+            lessonMutation.data.introduction,
+            lessonMutation.data.learningObjectives?.join('\n'),
+          ].filter(Boolean).join('\n\n')}
+        >
+          {lessonMutation.data.learningObjectives?.length > 0 && (
+            <div>
+              <SectionLabel>Learning Objectives</SectionLabel>
+              <ul className="space-y-1">
+                {lessonMutation.data.learningObjectives.map((obj, i) => (
+                  <li key={i} className="text-sm text-muted-foreground flex gap-2">
+                    <span className="text-primary font-bold shrink-0">{i + 1}.</span> {obj}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {lessonMutation.data.introduction && (
+            <div>
+              <SectionLabel>Introduction</SectionLabel>
+              <p className="text-sm text-muted-foreground">{lessonMutation.data.introduction}</p>
+            </div>
+          )}
+          {lessonMutation.data.keyVocabulary?.length > 0 && (
+            <div>
+              <SectionLabel>Key Vocabulary</SectionLabel>
+              <div className="flex flex-wrap gap-2">
+                {lessonMutation.data.keyVocabulary.map((v, i) => (
+                  <div key={i} className="bg-muted rounded-lg px-3 py-1.5 text-xs">
+                    <span className="font-medium">{v.word}</span>
+                    {v.language && <span className="text-muted-foreground ml-1">({v.language})</span>}
+                    <span className="text-muted-foreground"> — {v.definition}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {lessonMutation.data.quiz?.length > 0 && (
+            <div>
+              <SectionLabel>Quiz Questions</SectionLabel>
+              <div className="space-y-3">
+                {lessonMutation.data.quiz.map((q, i) => (
+                  <div key={i} className="bg-muted rounded-xl p-4 text-sm">
+                    <div className="font-medium mb-2">{i + 1}. {q.question}</div>
+                    <div className="space-y-1 text-muted-foreground mb-2">
+                      {q.options?.map((opt, j) => <div key={j}>{opt}</div>)}
+                    </div>
+                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-xs">
+                      Answer: {q.correctAnswer}
+                    </Badge>
+                    {q.explanation && <p className="text-xs text-muted-foreground mt-1">{q.explanation}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {lessonMutation.data.discussionQuestions?.length > 0 && (
+            <div>
+              <SectionLabel>Discussion Questions</SectionLabel>
+              <ul className="space-y-1">
+                {lessonMutation.data.discussionQuestions.map((q, i) => (
+                  <li key={i} className="text-sm text-muted-foreground">• {q}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </ResultSection>
+      )}
+
+      {/* Children's Story Result */}
+      {childrenMutation.isPending && <AILoading message="Writing children's story…" />}
+      {childrenMutation.data && (
+        <ResultSection
+          title={`🧒 Children's Story: ${childrenMutation.data.title || ''}`}
+          copyText={childrenMutation.data.story}
+          exportData={childrenMutation.data}
+          exportFilename="childrens-story.json"
+        >
+          <p className="leading-relaxed whitespace-pre-wrap text-sm">{childrenMutation.data.story}</p>
+          {childrenMutation.data.moralLesson && (
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 text-sm">
+              <span className="font-semibold">Moral Lesson: </span>
+              {childrenMutation.data.moralLesson}
+            </div>
+          )}
+          {childrenMutation.data.illustrationSuggestions?.length > 0 && (
+            <div>
+              <SectionLabel>Illustration Suggestions</SectionLabel>
+              <ul className="space-y-1">
+                {childrenMutation.data.illustrationSuggestions.map((s, i) => (
+                  <li key={i} className="text-xs text-muted-foreground">• {s}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </ResultSection>
+      )}
+
+      {/* Podcast Script Result */}
+      {podcastMutation.isPending && <AILoading message="Writing podcast script…" />}
+      {podcastMutation.data && (
+        <ResultSection
+          title={`🎙️ Podcast: ${podcastMutation.data.episodeTitle || ''}`}
+          exportData={podcastMutation.data}
+          exportFilename="podcast-script.json"
+          copyText={[
+            podcastMutation.data.episodeTitle,
+            podcastMutation.data.intro,
+            ...(podcastMutation.data.segments?.map((s) => `${s.title}\n${s.script}`) || []),
+            podcastMutation.data.outro,
+          ].filter(Boolean).join('\n\n')}
+        >
+          {podcastMutation.data.duration && (
+            <p className="text-xs text-muted-foreground">Estimated duration: {podcastMutation.data.duration}</p>
+          )}
+          {podcastMutation.data.intro && (
+            <div>
+              <SectionLabel>Intro</SectionLabel>
+              <div className="bg-muted rounded-xl p-4 text-sm whitespace-pre-wrap">{podcastMutation.data.intro}</div>
+            </div>
+          )}
+          {podcastMutation.data.segments?.map((seg, i) => (
+            <div key={i} className="border border-border/50 rounded-xl p-4">
+              <p className="font-medium text-sm mb-1">{seg.title}</p>
+              {seg.duration && <p className="text-xs text-muted-foreground mb-2">{seg.duration}</p>}
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{seg.script}</p>
+            </div>
           ))}
-        </TabsList>
+          {podcastMutation.data.outro && (
+            <div>
+              <SectionLabel>Outro</SectionLabel>
+              <div className="bg-muted rounded-xl p-4 text-sm whitespace-pre-wrap">{podcastMutation.data.outro}</div>
+            </div>
+          )}
+          {podcastMutation.data.hashtags?.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {podcastMutation.data.hashtags.map((h) => (
+                <Badge key={h} variant="secondary" className="text-xs">{h}</Badge>
+              ))}
+            </div>
+          )}
+        </ResultSection>
+      )}
 
-        <TabsContent value="lesson" className="mt-4">
-          <TabPanel
-            mutation={lessonMutation}
-            onGenerate={() => lessonMutation.mutate()}
-            disabled={disabled}
-            outputLang={lessonLang}
-            setOutputLang={setLessonLang}
-            showAudience
-            audience={audience}
-            setAudience={setAudience}
-            resultNode={(data) => <LessonResult data={data} />}
-            copyText={(data) => [data.lessonTitle, data.introduction, data.learningObjectives?.join('\n')].filter(Boolean).join('\n\n')}
-          />
-        </TabsContent>
-
-        <TabsContent value="children" className="mt-4">
-          <TabPanel
-            mutation={childrenMutation}
-            onGenerate={() => childrenMutation.mutate()}
-            disabled={disabled}
-            outputLang={childrenLang}
-            setOutputLang={setChildrenLang}
-            resultNode={(data) => <ChildrenResult data={data} />}
-            exportType="children"
-            exportFilename="childrens-story"
-            copyText={(data) => data.story || data.content || ''}
-          />
-        </TabsContent>
-
-        <TabsContent value="podcast" className="mt-4">
-          <TabPanel
-            mutation={podcastMutation}
-            onGenerate={() => podcastMutation.mutate()}
-            disabled={disabled}
-            outputLang={podcastLang}
-            setOutputLang={setPodcastLang}
-            resultNode={(data) => <PodcastResult data={data} />}
-            exportType="podcast"
-            exportFilename="podcast-script"
-            copyText={(data) => buildPlainText(data, 'podcast')}
-          />
-        </TabsContent>
-
-        <TabsContent value="cross" className="mt-4">
-          <TabPanel
-            mutation={crossLangMutation}
-            onGenerate={() => crossLangMutation.mutate()}
-            disabled={disabled}
-            outputLang={crossLang}
-            setOutputLang={setCrossLang}
-            resultNode={(data) => <CrossLangResult data={data} />}
-            copyText={(data) => data.culturalInsights || ''}
-          />
-        </TabsContent>
-      </Tabs>
+      {/* Cross-Language Connections Result */}
+      {crossLangMutation.isPending && <AILoading message="Finding cultural connections…" />}
+      {crossLangMutation.data && (
+        <ResultSection
+          title="🌍 Cross-Language Cultural Connections"
+          exportData={crossLangMutation.data}
+          exportFilename="cross-language.json"
+        >
+          {crossLangMutation.data.culturalInsights && (
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
+              <p className="text-sm text-muted-foreground">{crossLangMutation.data.culturalInsights}</p>
+            </div>
+          )}
+          {['hausaConnections', 'yorubaConnections', 'igboConnections'].map((key) => {
+            const lang = key.replace('Connections', '');
+            const items = crossLangMutation.data[key];
+            if (!items?.length) return null;
+            return (
+              <div key={key}>
+                <SectionLabel>{lang}</SectionLabel>
+                <div className="space-y-2">
+                  {items.map((item, i) => (
+                    <div key={i} className="bg-muted rounded-lg p-3 text-sm">
+                      <p className="font-medium">{item.title}</p>
+                      <p className="text-muted-foreground text-xs mt-0.5">{item.similarity}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </ResultSection>
+      )}
     </div>
   );
 }

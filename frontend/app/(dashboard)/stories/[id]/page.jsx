@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
-import { Sparkles, Globe, Mic, GraduationCap, Baby, ArrowLeft, Bookmark, Copy, Check, Volume2, Download, Share2, RefreshCw, Trash2, AlertTriangle } from 'lucide-react';
+import { Sparkles, Globe, Mic, GraduationCap, Baby, ArrowLeft, Bookmark, Copy, Check, Volume2, Download, Share2, RefreshCw, Trash2, AlertTriangle, Languages } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -64,6 +64,7 @@ export default function StoryDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const [translateTo, setTranslateTo] = useState('english');
+  const [outputLanguage, setOutputLanguage] = useState('');
   const [speaking, setSpeaking] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const queryClient = useQueryClient();
@@ -87,15 +88,19 @@ export default function StoryDetailPage() {
 
   // Educational: backend returns data.content
   const educationMutation = useMutation({
-    mutationFn: (audience) =>
-      api.get(`/stories/${id}/educational`).then((r) => r.data.data.content),
+    mutationFn: (audience) => {
+      const lang = outputLanguage || story?.language || 'english';
+      return api.get(`/stories/${id}/educational?outputLanguage=${lang}`).then((r) => r.data.data.content);
+    },
     onError: (err) => toast.error(err.response?.data?.message || err.message || 'Failed to generate. Please try again.'),
   });
 
   // Children's version: backend returns data.version
   const childrenMutation = useMutation({
-    mutationFn: () =>
-      api.get(`/stories/${id}/childrens-version`).then((r) => r.data.data.version),
+    mutationFn: () => {
+      const lang = outputLanguage || story?.language || 'english';
+      return api.get(`/stories/${id}/childrens-version?outputLanguage=${lang}`).then((r) => r.data.data.version);
+    },
     onError: (err) => toast.error(err.response?.data?.message || err.message || 'Failed to generate. Please try again.'),
   });
 
@@ -115,8 +120,10 @@ export default function StoryDetailPage() {
 
   // Podcast: backend returns data.script
   const podcastMutation = useMutation({
-    mutationFn: () =>
-      api.get(`/stories/${id}/podcast`).then((r) => r.data.data.script),
+    mutationFn: () => {
+      const lang = outputLanguage || story?.language || 'english';
+      return api.get(`/stories/${id}/podcast?outputLanguage=${lang}`).then((r) => r.data.data.script);
+    },
     onError: (err) => toast.error(err.response?.data?.message || err.message || 'Failed to generate. Please try again.'),
   });
 
@@ -292,6 +299,27 @@ export default function StoryDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Output language selector */}
+      <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/40 border border-border/50 flex-wrap">
+        <Languages className="w-4 h-4 text-primary shrink-0" />
+        <span className="text-xs font-medium text-muted-foreground">AI Output Language:</span>
+        <Select value={outputLanguage || story.language} onValueChange={setOutputLanguage}>
+          <SelectTrigger className="h-8 w-36 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SUPPORTED_LANGUAGES.map((l) => (
+              <SelectItem key={l} value={l} className="capitalize">{l}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {outputLanguage && outputLanguage !== story.language && (
+          <span className="text-xs text-primary font-medium">
+            ✓ Gemma will generate in <span className="capitalize">{outputLanguage}</span>
+          </span>
+        )}
+      </div>
 
       {/* Tabs */}
       <Tabs defaultValue="story">
@@ -495,7 +523,8 @@ export default function StoryDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex gap-2 flex-wrap" role="group" aria-label="Select education level">
+              <div className="flex gap-2 flex-wrap items-center">
+                <span className="text-xs text-muted-foreground">Level:</span>
                 {['primary', 'secondary', 'university'].map((level) => (
                   <Button
                     key={level}
@@ -504,12 +533,16 @@ export default function StoryDetailPage() {
                     onClick={() => educationMutation.mutate(level)}
                     disabled={educationMutation.isPending}
                     className="capitalize"
-                    aria-busy={educationMutation.isPending}
                   >
                     {level}
                   </Button>
                 ))}
               </div>
+              {(outputLanguage && outputLanguage !== story.language) && (
+                <p className="text-xs text-primary flex items-center gap-1">
+                  <Languages className="w-3 h-3" /> Output: <span className="capitalize font-medium">{outputLanguage}</span>
+                </p>
+              )}
               {educationMutation.isPending && <AILoadingState message="Generating lesson plan..." />}
               {educationMutation.data && (
                 <div className="space-y-4">
@@ -564,12 +597,19 @@ export default function StoryDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <GenerateButton
-                onClick={() => childrenMutation.mutate()}
-                isPending={childrenMutation.isPending}
-                idleLabel="Generate Children's Story"
-                loadingLabel="Generating..."
-              />
+              <div className="flex items-center gap-3 flex-wrap">
+                <GenerateButton
+                  onClick={() => childrenMutation.mutate()}
+                  isPending={childrenMutation.isPending}
+                  idleLabel="Generate Children's Story"
+                  loadingLabel="Generating..."
+                />
+                {(outputLanguage && outputLanguage !== story.language) && (
+                  <span className="text-xs text-primary flex items-center gap-1">
+                    <Languages className="w-3 h-3" /> Output: <span className="capitalize font-medium">{outputLanguage}</span>
+                  </span>
+                )}
+              </div>
               {childrenMutation.isPending && <AILoadingState message="Writing children's story..." />}
               {childrenMutation.data && (
                 <div className="space-y-3">
@@ -713,12 +753,19 @@ export default function StoryDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <GenerateButton
-                onClick={() => podcastMutation.mutate()}
-                isPending={podcastMutation.isPending}
-                idleLabel="Generate Podcast Script"
-                loadingLabel="Generating..."
-              />
+              <div className="flex items-center gap-3 flex-wrap">
+                <GenerateButton
+                  onClick={() => podcastMutation.mutate()}
+                  isPending={podcastMutation.isPending}
+                  idleLabel="Generate Podcast Script"
+                  loadingLabel="Generating..."
+                />
+                {(outputLanguage && outputLanguage !== story.language) && (
+                  <span className="text-xs text-primary flex items-center gap-1">
+                    <Languages className="w-3 h-3" /> Output: <span className="capitalize font-medium">{outputLanguage}</span>
+                  </span>
+                )}
+              </div>
               {podcastMutation.data && (
                 <div className="space-y-4 text-sm">
                   {podcastMutation.data.episodeTitle && (

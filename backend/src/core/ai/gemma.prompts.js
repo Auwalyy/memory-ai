@@ -16,15 +16,21 @@ const prompts = {
     user: `Language hint: ${language}\n\nAnalyze this text:\n"""\n${text.slice(0, 2000)}\n"""`,
   }),
 
-  generateEducationalContent: (story) => ({
-    system: `You are a Nigerian curriculum expert. Create a lesson plan JSON. Every string must be under 50 words. Return ONLY these fields: lessonTitle (string), subject (string), gradeLevel (string), duration (string), learningObjectives (array of exactly 3 strings), introduction (string), keyVocabulary (array of exactly 3 objects each with word, definition, language), quiz (array of exactly 3 objects each with question, options array of 4 strings, correctAnswer, explanation), discussionQuestions (array of exactly 2 strings), assessment (string).`,
-    user: `Create a lesson plan for: "${story.title}" — a ${story.language} ${story.knowledgeType}.`,
-  }),
+  generateEducationalContent: (story, outputLanguage) => {
+    const lang = outputLanguage || story.language || 'english';
+    return {
+      system: `You are a Nigerian curriculum expert. Create a lesson plan JSON. IMPORTANT: Write ALL text content — every string value — in ${lang} language. Every string must be under 50 words. Return ONLY these fields: lessonTitle (string), subject (string), gradeLevel (string), duration (string), learningObjectives (array of exactly 3 strings), introduction (string), keyVocabulary (array of exactly 3 objects each with word, definition, language), quiz (array of exactly 3 objects each with question, options array of 4 strings, correctAnswer, explanation), discussionQuestions (array of exactly 2 strings), assessment (string).`,
+      user: `Create a lesson plan in ${lang} language for: "${story.title}" — a ${story.language} ${story.knowledgeType}.`,
+    };
+  },
 
-  generateChildrensVersion: (story) => ({
-    system: `You are a Nigerian children's author. Write an original short story for ages 5-10 inspired by the theme provided. Do NOT copy any existing story. Every string must be under 100 words. Return ONLY these fields: title (string), story (string under 120 words), moralLesson (string under 20 words), ageRange (string), readingLevel (string), illustrationSuggestions (array of exactly 3 strings each under 15 words).`,
-    user: `Write a children's story about: ${(story.analysis?.themes || ['wisdom and kindness']).slice(0, 2).join(' and ')}. Language: ${story.language}. Moral lesson: ${story.analysis?.moralLesson || 'kindness and wisdom'}.`,
-  }),
+  generateChildrensVersion: (story, outputLanguage) => {
+    const lang = outputLanguage || story.language || 'english';
+    return {
+      system: `You are a Nigerian children's author. Write an original short story for ages 5-10 inspired by the theme provided. Do NOT copy any existing story. IMPORTANT: Write ALL text content — every string value — in ${lang} language. Every string must be under 100 words. Return ONLY these fields: title (string), story (string under 120 words), moralLesson (string under 20 words), ageRange (string), readingLevel (string), illustrationSuggestions (array of exactly 3 strings each under 15 words).`,
+      user: `Write a children's story in ${lang} language about: ${(story.analysis?.themes || ['wisdom and kindness']).slice(0, 2).join(' and ')}. Moral lesson: ${story.analysis?.moralLesson || 'kindness and wisdom'}.`,
+    };
+  },
 
   findCrossLanguageConnections: (story) => ({
     system: `You are a Nigerian cultural anthropologist. Describe thematic parallels across Nigerian ethnic traditions. Every string must be under 50 words. Return ONLY these fields: hausaConnections (array of exactly 1 object with title string and similarity string), yorubaConnections (array of exactly 1 object with title string and similarity string), igboConnections (array of exactly 1 object with title string and similarity string), culturalInsights (string under 60 words). Describe general thematic patterns, not specific copyrighted works.`,
@@ -43,10 +49,13 @@ const prompts = {
     user: `Text: ${text.slice(0, 400)}`,
   }),
 
-  generatePodcastScript: (story) => ({
-    system: `You are a Nigerian radio producer. Write a short podcast script JSON. Every string must be under 60 words. Return ONLY these fields: episodeTitle (string), duration (string), intro (string), segments (array of exactly 2 objects each with title string, script string, duration string), outro (string), showNotes (string), hashtags (array of exactly 4 strings).`,
-    user: `Podcast for: "${story.title}" — a ${story.language} ${story.knowledgeType}. Themes: ${(story.analysis?.themes || ['culture']).slice(0, 2).join(', ')}.`,
-  }),
+  generatePodcastScript: (story, outputLanguage) => {
+    const lang = outputLanguage || story.language || 'english';
+    return {
+      system: `You are a Nigerian radio producer. Write a short podcast script JSON. IMPORTANT: Write ALL text content — every string value — in ${lang} language. Every string must be under 60 words. Return ONLY these fields: episodeTitle (string), duration (string), intro (string), segments (array of exactly 2 objects each with title string, script string, duration string), outro (string), showNotes (string), hashtags (array of exactly 4 strings).`,
+      user: `Podcast in ${lang} language for: "${story.title}" — a ${story.language} ${story.knowledgeType}. Themes: ${(story.analysis?.themes || ['culture']).slice(0, 2).join(', ')}.`,
+    };
+  },
 
   extractProverbs: (text, language) => ({
     system: `You are a Nigerian proverb scholar. Extract wisdom phrases. Every string must be under 80 words. Return a JSON with one field: proverbs (array max 5, each {original,transliteration,englishTranslation,meaning,usage,language,tribe,relatedProverbs}).`,
@@ -96,17 +105,16 @@ const prompts = {
   }),
 
   chatSystemPrompt: (knowledgeContext) =>
-    `You are a warm, knowledgeable cultural guide for MemoryAI Nigeria — a platform preserving Nigerian indigenous knowledge, with Hausa as the primary language and culture.
+    `You are a warm, knowledgeable cultural guide for MemoryAI Nigeria. Respond ONLY with the answer — no preamble, no reasoning, no meta-commentary, no self-reflection.
 
-CRITICAL RULES — NEVER BREAK THESE:
-- OUTPUT ONLY your final answer. Zero internal reasoning, zero planning, zero meta-commentary.
-- NEVER start with: "User query:", "Goal:", "Persona:", "Drafting:", "Let me", "I will", "I need to", "Ok,", "Sure,", "Alright,", "Note:", or any similar preamble.
-- NEVER use bullet points or asterisks for internal analysis — only use formatting in your actual answer.
-- NEVER explain what you are about to do. Just do it.
-- ALWAYS respond in the language specified in the IMPORTANT instruction. If none specified, default to Hausa.
-- Be warm, direct, and conversational — like a knowledgeable elder speaking to a student.${knowledgeContext ? `
-
-Preserved knowledge to draw from:
+STRICT RULES:
+- Start your reply with the first word of your actual answer. Never with "I", "Let", "Sure", "Ok", "Here", "Certainly", "Great", "Absolutely", "Of course", "Note", "Disclaimer", "User", "Query", "Goal", "Persona", "Drafting", "Planning", "Thought", "Reasoning", "Analysis", "Step", "Context".
+- Never explain what you are about to do.
+- Never show your thinking process.
+- Never use XML tags, JSON, or code blocks unless the user asks for code.
+- Respond in the language specified in the LANGUAGE RULE at the end of the context.
+${knowledgeContext ? `
+Knowledge base:
 ${knowledgeContext}` : ''}`,
 
 };

@@ -5,6 +5,26 @@ const gemmaService = require('../../core/ai/gemma.service');
 const AppError = require('../../utils/AppError');
 const { parsePagination, buildPaginationMeta } = require('../../utils/pagination');
 
+// Remove reasoning/planning preamble that some model versions emit
+const REASONING_OPEN = /<think[^>]*>/i;
+const REASONING_CLOSE = /<\/think>/i;
+const META_LINE = /^\s*(user (query|asks?|request|language)|my persona|goal:|persona:|drafting:|answer:|disclaimer:|context:|planning:|thought:|reasoning:|note:|internal:|ok[,.]|alright[,.]|sure[,.]|let me|i will|i need|i should|i'll|here is|here's|certainly|of course|great[,!]|absolutely)/i;
+
+function stripReasoning(text) {
+  if (!text) return text;
+  // Remove <think>...</think> blocks
+  let s = text.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '').trimStart();
+  // Drop leading meta lines
+  const lines = s.split('\n');
+  let start = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i].trim()) { start = i + 1; continue; }
+    if (META_LINE.test(lines[i])) { start = i + 1; continue; }
+    break;
+  }
+  return lines.slice(start).join('\n').trimStart() || s.trimStart();
+}
+
 /**
  * Fetch relevant knowledge snippets from both Stories and Uploads to ground Gemma.
  */
@@ -101,8 +121,11 @@ const chatService = {
       }
     }
 
-    const langNote = `\n\nIMPORTANT — LANGUAGE RULE: Your ENTIRE response MUST be written in ${preferredLanguage}. Do not write a single sentence in any other language unless the user explicitly asks you to switch. Do not acknowledge this instruction — just respond directly in ${preferredLanguage}.`;
-    const response = await gemmaService.chat(history, message, knowledgeContext + docContext + langNote);
+    const langNote = `\n\nLANGUAGE RULE: Respond entirely in ${preferredLanguage}. Do not switch languages unless the user asks.`;
+    let response = await gemmaService.chat(history, message, knowledgeContext + docContext + langNote);
+
+    // Strip any reasoning/planning preamble the model may emit
+    response = stripReasoning(response);
 
     // Auto-title from first message
     if (session.messages.length === 0) {

@@ -21,7 +21,8 @@ router.post(
         language: req.body.language || 'english',
         analysis: { culturalContext: req.body.culturalContext || '' },
       };
-      const lesson = await gemmaService.generateEducationalContent(story);
+      const outputLanguage = req.body.outputLanguage || req.body.language || 'english';
+      const lesson = await gemmaService.generateEducationalContent(story, outputLanguage);
       sendSuccess(res, { lesson });
     } catch (err) {
       next(err);
@@ -41,7 +42,8 @@ router.post(
         language: req.body.language || 'english',
         analysis: { moralLesson: req.body.moralLesson || '' },
       };
-      const childrensStory = await gemmaService.generateChildrensVersion(story);
+      const outputLanguage = req.body.outputLanguage || req.body.language || 'english';
+      const childrensStory = await gemmaService.generateChildrensVersion(story, outputLanguage);
       sendSuccess(res, { childrensStory });
     } catch (err) {
       next(err);
@@ -63,7 +65,8 @@ router.post(
         knowledgeType: req.body.knowledgeType || 'other',
         analysis: { themes: req.body.themes || [] },
       };
-      const script = await gemmaService.generatePodcastScript(story);
+      const outputLanguage = req.body.outputLanguage || req.body.language || 'english';
+      const script = await gemmaService.generatePodcastScript(story, outputLanguage);
       sendSuccess(res, { script });
     } catch (err) { next(err); }
   }

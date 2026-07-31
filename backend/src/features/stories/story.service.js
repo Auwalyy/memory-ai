@@ -139,16 +139,16 @@ const storyService = {
     return storyRepository.deleteById(id);
   },
 
-  async generateEducationalContent(id) {
+  async generateEducationalContent(id, outputLanguage) {
     const story = await storyRepository.findById(id);
     if (!story) throw new AppError('Story not found', 404);
-    return gemmaService.generateEducationalContent(story);
+    return gemmaService.generateEducationalContent(story, outputLanguage);
   },
 
-  async generateChildrensVersion(id) {
+  async generateChildrensVersion(id, outputLanguage) {
     const story = await storyRepository.findById(id);
     if (!story) throw new AppError('Story not found', 404);
-    return gemmaService.generateChildrensVersion(story);
+    return gemmaService.generateChildrensVersion(story, outputLanguage);
   },
 
   async findCrossLanguageConnections(id) {
@@ -164,10 +164,10 @@ const storyService = {
     return gemmaService.translateWithContext(textToTranslate, story.language, targetLanguage);
   },
 
-  async generatePodcastScript(id) {
+  async generatePodcastScript(id, outputLanguage) {
     const story = await storyRepository.findById(id);
     if (!story) throw new AppError('Story not found', 404);
-    return gemmaService.generatePodcastScript(story);
+    return gemmaService.generatePodcastScript(story, outputLanguage);
   },
 
   async getRecommendations(id) {

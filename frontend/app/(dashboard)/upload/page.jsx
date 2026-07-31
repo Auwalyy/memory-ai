@@ -507,7 +507,7 @@ export default function UploadPage() {
 
       {/* Uploads list */}
       <div>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
             <h2 className="font-semibold text-base sm:text-lg">{showMineOnly ? t('yourUploads') : 'All Uploads'}</h2>
             <div className="flex rounded-lg border border-border overflow-hidden text-xs">
@@ -525,22 +525,24 @@ export default function UploadPage() {
               </button>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">AI output in:</span>
-            {['hausa', 'english', 'yoruba', 'igbo', 'pidgin'].map((lang) => (
-              <button
-                key={lang}
-                onClick={() => setSelectedLang(lang)}
-                className={[
-                  'px-2.5 py-1 rounded-full text-xs capitalize border transition-all',
-                  selectedLang === lang
-                    ? 'gradient-brand text-white border-transparent'
-                    : 'border-border text-muted-foreground hover:bg-muted',
-                ].join(' ')}
-              >
-                {lang}
-              </button>
-            ))}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground shrink-0">AI output in:</span>
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
+              {['hausa', 'english', 'yoruba', 'igbo', 'pidgin'].map((lang) => (
+                <button
+                  key={lang}
+                  onClick={() => setSelectedLang(lang)}
+                  className={[
+                    'px-2.5 py-1 rounded-full text-xs capitalize border transition-all shrink-0',
+                    selectedLang === lang
+                      ? 'gradient-brand text-white border-transparent'
+                      : 'border-border text-muted-foreground hover:bg-muted',
+                  ].join(' ')}
+                >
+                  {lang}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
         <div className="space-y-3">
