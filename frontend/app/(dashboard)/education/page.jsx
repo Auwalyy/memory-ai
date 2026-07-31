@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   GraduationCap, Baby, Sparkles, Mic, Globe,
-  Copy, Check, Download, RefreshCw, Eye,
+  Copy, Check, Download, RefreshCw, Eye, FileText, ChevronDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import api from '@/lib/api';
 import { SUPPORTED_LANGUAGES } from '@/lib/constants';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useLanguage } from '@/hooks/useLanguage';
 
 // ── Sample data ───────────────────────────────────────────────────────────────
 
@@ -406,16 +407,35 @@ function TabPanel({ mutation, onGenerate, disabled, outputLang, setOutputLang, s
 
 export default function EducationPage() {
   const { t } = useTranslation();
+  const { lang } = useLanguage();
   const [content, setContent] = useState('');
-  const [inputLang, setInputLang] = useState('english');
+  const [inputLang, setInputLang] = useState('hausa');
   const [audience, setAudience] = useState('secondary');
   const [activeTab, setActiveTab] = useState('lesson');
+  const [source, setSource] = useState('paste'); // 'paste' | 'upload'
+  const [selectedUploadId, setSelectedUploadId] = useState('');
+
+  // Fetch all uploads (platform-wide) for the document picker
+  const { data: uploadsData } = useQuery({
+    queryKey: ['education-uploads'],
+    queryFn: () => api.get('/uploads?limit=100').then((r) => r.data.data || []),
+  });
+  const analyzedUploads = (uploadsData || []).filter((u) => u.analysisStatus === 'completed' && u.extractedText);
+
+  const loadUpload = (uploadId) => {
+    const upload = analyzedUploads.find((u) => u._id === uploadId);
+    if (!upload) return;
+    setSelectedUploadId(uploadId);
+    setContent(upload.extractedText || upload.ingestion?.summaries?.medium || upload.ingestion?.summaries?.short || '');
+    setInputLang(upload.ingestion?.detectedLanguage || 'hausa');
+    toast.success(`Loaded: ${upload.ingestion?.metadata?.title || upload.originalName}`);
+  };
 
   // Per-tab output language
-  const [lessonLang, setLessonLang] = useState('english');
-  const [childrenLang, setChildrenLang] = useState('english');
-  const [podcastLang, setPodcastLang] = useState('english');
-  const [crossLang, setCrossLang] = useState('english');
+  const [lessonLang, setLessonLang] = useState('hausa');
+  const [childrenLang, setChildrenLang] = useState('hausa');
+  const [podcastLang, setPodcastLang] = useState('hausa');
+  const [crossLang, setCrossLang] = useState('hausa');
 
   const lessonMutation = useMutation({
     mutationFn: () => api.post('/education/lesson', { content, audience, language: lessonLang }).then((r) => r.data.data.lesson),
@@ -458,26 +478,127 @@ export default function EducationPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Sample picker */}
-          <div className="space-y-1.5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Try a sample</p>
-            <div className="flex flex-wrap gap-2">
-              {SAMPLE_TEXTS.map((sample, i) => (
-                <button key={i} type="button"
-                  onClick={() => { setContent(sample.text); setInputLang(sample.language); }}
-                  className={['filter-chip text-xs', content === sample.text ? 'active' : ''].join(' ')}>
-                  {sample.label}
-                </button>
-              ))}
-            </div>
+
+          {/* Source toggle */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setSource('paste')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                source === 'paste' ? 'gradient-brand text-white border-transparent' : 'border-border text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              <Sparkles className="w-3 h-3" />
+              {lang === 'hausa' ? 'Liƙa Rubutu' : 'Paste Text'}
+            </button>
+            <button
+              onClick={() => setSource('upload')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                source === 'upload' ? 'gradient-brand text-white border-transparent' : 'border-border text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              <FileText className="w-3 h-3" />
+              {lang === 'hausa' ? 'Amfani da Takarda da aka Loda' : 'Use Uploaded Document'}
+              {analyzedUploads.length > 0 && (
+                <span className="ml-1 bg-white/20 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                  {analyzedUploads.length}
+                </span>
+              )}
+            </button>
           </div>
 
-          <Textarea value={content} onChange={(e) => setContent(e.target.value)}
-            placeholder={t('pastePlaceholder')} rows={6} className="resize-none" />
+          {/* Uploaded document picker */}
+          {source === 'upload' && (
+            <div className="space-y-3">
+              {analyzedUploads.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground border border-dashed border-border rounded-xl">
+                  <FileText className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">{lang === 'hausa' ? 'Babu takaddun da aka nazarta tukuna' : 'No analyzed documents yet'}</p>
+                  <p className="text-xs mt-1">{lang === 'hausa' ? 'Loda takarda a shafin Loda' : 'Upload a document on the Upload page first'}</p>
+                </div>
+              ) : (
+                <div className="grid gap-2 max-h-64 overflow-y-auto pr-1">
+                  {analyzedUploads.map((upload) => {
+                    const title = upload.ingestion?.metadata?.title || upload.originalName;
+                    const lang_ = upload.ingestion?.detectedLanguage;
+                    const summary = upload.ingestion?.summaries?.short;
+                    const isSelected = selectedUploadId === upload._id;
+                    return (
+                      <button
+                        key={upload._id}
+                        onClick={() => loadUpload(upload._id)}
+                        className={`w-full text-left p-3 rounded-xl border-2 transition-all ${
+                          isSelected
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border/50 hover:border-primary/40 hover:bg-muted/40'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
+                            <p className="text-sm font-medium truncate">{title}</p>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {lang_ && (
+                              <Badge variant="secondary" className="text-xs capitalize">{lang_}</Badge>
+                            )}
+                            {isSelected && (
+                              <span className="text-xs text-primary font-semibold">✓ Loaded</span>
+                            )}
+                          </div>
+                        </div>
+                        {summary && (
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{summary}</p>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {selectedUploadId && content && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/20">
+                  <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <p className="text-xs text-primary flex-1 truncate">
+                    {lang === 'hausa' ? 'An loda rubutu — shirye don ƙirƙira' : 'Document loaded — ready to generate'}
+                  </p>
+                  <button
+                    onClick={() => { setContent(''); setSelectedUploadId(''); }}
+                    className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    {lang === 'hausa' ? 'Share' : 'Clear'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
-          <div className="flex items-center gap-2">
+          {/* Paste mode */}
+          {source === 'paste' && (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {lang === 'hausa' ? 'Gwada samfuri' : 'Try a sample'}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {SAMPLE_TEXTS.map((sample, i) => (
+                    <button key={i} type="button"
+                      onClick={() => { setContent(sample.text); setInputLang(sample.language); }}
+                      className={['filter-chip text-xs', content === sample.text ? 'active' : ''].join(' ')}>
+                      {sample.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <Textarea value={content} onChange={(e) => setContent(e.target.value)}
+                placeholder={t('pastePlaceholder')} rows={6} className="resize-none" />
+            </div>
+          )}
+
+          {/* Content language + word count — shown in both modes */}
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="space-y-0.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Content Language</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {lang === 'hausa' ? 'Harshen Abun Ciki' : 'Content Language'}
+              </p>
               <Select value={inputLang} onValueChange={setInputLang}>
                 <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -487,12 +608,13 @@ export default function EducationPage() {
                 </SelectContent>
               </Select>
             </div>
-            {!disabled && (
+            {content.trim() && (
               <p className="text-xs text-muted-foreground mt-4">
-                {content.split(' ').length} words · Choose a tab below to generate
+                {content.split(' ').filter(Boolean).length} {lang === 'hausa' ? 'kalmomi' : 'words'} · {lang === 'hausa' ? 'Zaɓi shafin ƙasa don ƙirƙira' : 'Choose a tab below to generate'}
               </p>
             )}
           </div>
+
         </CardContent>
       </Card>
 

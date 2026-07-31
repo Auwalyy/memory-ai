@@ -326,17 +326,19 @@ function IngestionResultPanel({ uploadId, fileName }) {
   );
 }
 
-const SAMPLE_UPLOAD_TEXT = `Egungun Festival — Yoruba Ancestor Masquerade
+const SAMPLE_UPLOAD_TEXT = `Hankali ya fi karfi — Tatsuniyar Hausa
 
-The Egungun festival is one of the most sacred ceremonies in Yoruba religion, celebrated across Yorubaland and in the African diaspora. Egungun are masquerades that represent the spirits of ancestors returning to the world of the living to bless, counsel, and sometimes discipline their descendants.
+Wata rana, wani manomi mai suna Musa ya yi niyyar noma gonarsa da sauri. Ya yi tunanin cewa idan ya ja amfanin gona daga kasa kafin lokaci, za su girma da sauri. Sai ya fara ja-ja da dukan karfinsa.
 
-The masquerades are elaborately costumed figures whose identity must never be revealed — to unmask an Egungun is considered a serious taboo that can bring misfortune. The costumes are made of layers of cloth, often passed down through generations, and the Egungun speaks in a disguised voice.
+Maƙwabcinsa Isa ya gane abin da yake yi, ya ce: "Musa, hankali ya fi karfi. Bari amfanin gona su girma da lokacin su."
 
-During the festival, the Egungun moves through the community, blessing households, settling disputes, and reminding the living of their obligations to the ancestors. Certain Egungun are known for healing, others for prophecy, and others for entertainment.
+Ammaa Musa bai saurara ba. Ya ci gaba da ja-ja har sai ya lalata dukan gonarsa. A lokacin girbi, Isa ya girbi sau uku fiye da Musa.
 
-The festival reinforces the Yoruba belief that death is not the end — the ancestors remain active participants in community life, and maintaining good relations with them through ritual and ethical living ensures prosperity and protection for the living.
+Daga wannan labari, dattawan Hausa suka ce: "Hankali ya fi karfi" — ma\'anar haka ita ce, haƙuri da hikima sun fi ƙarfin jiki. Ana amfani da wannan karin magana wajen ba da shawara ga matasa game da aure, kasuwanci, da warware rikici.
 
-Elders say: "Iku pa eniyan, ko pa oruko" — death kills a person, but not their name. The Egungun tradition ensures that names and wisdom live on.`;
+Wannan hikima ta zama wani ɓangare na al'adun gargajiya na Hausawa, ana koyar da ita daga tsara zuwa tsara ta hanyar tatsuniyoyi da karin magana.`;
+
+const SAMPLE_UPLOAD_LABEL = '🌿 Hankali ya fi karfi (Hausa tatsuniya)';
 
 export default function UploadPage() {
   const { t } = useTranslation();
@@ -345,7 +347,7 @@ export default function UploadPage() {
   const [activePipelines, setActivePipelines] = useState({});
   const [expandedResults, setExpandedResults] = useState({});
   const [pipelineLangs, setPipelineLangs] = useState({});
-  const [selectedLang, setSelectedLang] = useState('english');
+  const [selectedLang, setSelectedLang] = useState('hausa');
   const queryClient = useQueryClient();
 
   const uploadSampleText = async () => {
@@ -369,9 +371,11 @@ export default function UploadPage() {
     setUploading(false);
   };
 
+  const [showMineOnly, setShowMineOnly] = useState(false);
+
   const { data: uploadsData, isLoading } = useQuery({
-    queryKey: ['uploads'],
-    queryFn: () => api.get('/uploads').then((r) => r.data.data),
+    queryKey: ['uploads', showMineOnly],
+    queryFn: () => api.get(showMineOnly ? '/uploads/mine' : '/uploads?limit=100').then((r) => r.data.data),
     refetchInterval: 8000,
   });
 
@@ -478,7 +482,7 @@ export default function UploadPage() {
           disabled={uploading}
           className="filter-chip text-xs"
         >
-          🌿 Egungun Festival (Yoruba text)
+          {SAMPLE_UPLOAD_LABEL}
         </button>
       </div>
 
@@ -504,10 +508,26 @@ export default function UploadPage() {
       {/* Uploads list */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold text-base sm:text-lg">{t('yourUploads')}</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold text-base sm:text-lg">{showMineOnly ? t('yourUploads') : 'All Uploads'}</h2>
+            <div className="flex rounded-lg border border-border overflow-hidden text-xs">
+              <button
+                onClick={() => setShowMineOnly(false)}
+                className={['px-2.5 py-1 transition-colors', !showMineOnly ? 'gradient-brand text-white' : 'text-muted-foreground hover:bg-muted'].join(' ')}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setShowMineOnly(true)}
+                className={['px-2.5 py-1 transition-colors border-l border-border', showMineOnly ? 'gradient-brand text-white' : 'text-muted-foreground hover:bg-muted'].join(' ')}
+              >
+                Mine
+              </button>
+            </div>
+          </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">AI output in:</span>
-            {['english', 'hausa', 'yoruba', 'igbo', 'pidgin'].map((lang) => (
+            {['hausa', 'english', 'yoruba', 'igbo', 'pidgin'].map((lang) => (
               <button
                 key={lang}
                 onClick={() => setSelectedLang(lang)}
@@ -558,7 +578,14 @@ export default function UploadPage() {
                             ) : (
                               <span className="font-medium text-sm truncate leading-snug">{upload.originalName}</span>
                             )}
-                            <Badge variant="secondary" className="text-xs shrink-0 h-5">{upload.uploadType}</Badge>
+                            <div className="flex items-center gap-1 shrink-0">
+                              {!showMineOnly && upload.uploader && (
+                                <Badge variant="outline" className="text-xs h-5">
+                                  {upload.uploader.name || upload.uploader.username || 'Community'}
+                                </Badge>
+                              )}
+                              <Badge variant="secondary" className="text-xs h-5">{upload.uploadType}</Badge>
+                            </div>
                           </div>
                           {upload.ingestion?.metadata?.title && !isPipelineActive && (
                             <p className="text-xs font-medium text-foreground">{upload.ingestion.metadata.title}</p>

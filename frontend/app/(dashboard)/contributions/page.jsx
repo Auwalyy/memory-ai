@@ -89,7 +89,7 @@ export default function ContributionsPage() {
 
   const { data: uploadsData, isLoading: uploadsLoading } = useQuery({
     queryKey: ['my-uploads'],
-    queryFn: () => api.get('/uploads').then((r) => r.data),
+    queryFn: () => api.get('/uploads/mine').then((r) => r.data),
   });
 
   const stories = storiesData?.data || [];
@@ -116,7 +116,7 @@ export default function ContributionsPage() {
           </div>
           <div>
             <h1 className="font-serif text-2xl sm:text-3xl font-bold">My Contributions</h1>
-            <p className="text-muted-foreground text-sm">Your uploads, drafts, and published knowledge</p>
+            <p className="text-muted-foreground text-sm">Your uploads, drafts, and published knowledge · <Link href="/upload" className="text-primary hover:underline">See all community uploads →</Link></p>
           </div>
         </div>
       </motion.div>

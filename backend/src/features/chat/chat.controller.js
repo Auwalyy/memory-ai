@@ -13,7 +13,8 @@ const controller = {
     try {
       const result = await chatService.sendMessage(
         req.params.id, req.user._id, req.body.message,
-        req.body.preferredLanguage || req.user.preferredLanguage || 'english'
+        req.body.preferredLanguage || req.user.preferredLanguage || 'hausa',
+        req.body.uploadId || null
       );
       sendSuccess(res, result);
     } catch (err) { next(err); }

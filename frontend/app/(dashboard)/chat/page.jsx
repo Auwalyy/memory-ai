@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback, forwardRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Send, Plus, MessageSquare, Sparkles, Trash2, Copy, Check, ChevronLeft, Menu } from 'lucide-react';
+import { Send, Plus, MessageSquare, Sparkles, Trash2, Copy, Check, ChevronLeft, Menu, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,6 +14,8 @@ import api from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useLanguage } from '@/hooks/useLanguage';
+import { useSearchParams } from 'next/navigation';
 
 const AutoResizeTextarea = forwardRef(function AutoResizeTextarea(
   { value, onChange, onKeyDown, placeholder, disabled }, ref
@@ -56,28 +58,36 @@ function CopyButton({ text }) {
   );
 }
 
-// Strip any leading "User asks..." / "My persona:" / "Goal:" preamble lines
+// Strip ALL reasoning, planning, and meta preamble from AI responses
 function cleanAIResponse(raw) {
   if (!raw) return raw;
-  const lines = raw.split('\n');
+
+  // Remove entire blocks that look like internal reasoning wrapped in <think>...</think> or similar
+  let text = raw
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
+    .trimStart();
+
+  const lines = text.split('\n');
   const metaPatterns = [
-    /^\s*\*\s*(user (query|asks?|language)|my persona|goal|persona|drafting|answer|disclaimer|context|planning|thought|reasoning|note to self)/i,
-    /^\s*(user (query|asks?|language)|my persona|goal:|persona:|drafting|answer:|disclaimer:|context:|planning:|thought:|reasoning:)/i,
+    /^\s*[*\-]?\s*(user (query|asks?|language|request)|my persona|goal|persona|drafting|answer|disclaimer|context|planning|thought|reasoning|note to self|internal|analysis|step \d)/i,
+    /^\s*(user (query|asks?|language|request)|my persona|goal:|persona:|drafting:|answer:|disclaimer:|context:|planning:|thought:|reasoning:|note:|internal:|ok,|alright,|sure,|let me|i will|i need to|i should|i'll)/i,
   ];
-  // Find the first line that is actual content (not meta/planning)
+
+  // Drop all leading lines that match meta patterns or are blank before real content
   let startIdx = 0;
   for (let i = 0; i < lines.length; i++) {
     if (metaPatterns.some((p) => p.test(lines[i]))) {
       startIdx = i + 1;
-    } else if (lines[i].trim() && startIdx === i) {
+    } else if (lines[i].trim()) {
       break;
+    } else {
+      startIdx = i + 1; // skip leading blank lines
     }
   }
-  // Also strip any trailing meta block separated by a blank line
-  const cleaned = lines.slice(startIdx).join('\n').trimStart();
-  // Remove any remaining inline meta markers
-  return cleaned
-    .replace(/^\*\s*(User (query|asks?)|Goal|Persona|Drafting|Disclaimer)[^\n]*\n/gim, '')
+
+  return lines.slice(startIdx).join('\n')
+    .replace(/^\*\s*(User (query|asks?|request)|Goal|Persona|Drafting|Disclaimer|Planning|Reasoning)[^\n]*\n/gim, '')
     .trimStart();
 }
 
@@ -92,14 +102,48 @@ function AIMessage({ content }) {
   );
 }
 
-const SUGGESTED_PROMPTS = [
-  'Tell me a Yoruba folktale about wisdom and trickery',
-  'What are common Hausa proverbs about patience?',
-  'Explain the Igbo Ogbanje spirit child tradition',
-  'What is the significance of kola nut in Nigerian ceremonies?',
-  'Compare Yoruba Abiku and Igbo Ogbanje traditions',
-  'Tell me about the ancient Nri Kingdom of Igboland',
-];
+const SUGGESTED_PROMPTS_BY_LANG = {
+  hausa: [
+    'Faɗa mini tatsuniyar Hausa game da hikima',
+    'Waɗanne karin magana na Hausa game da haƙuri?',
+    'Bayyana al\'adar Durbar ta Arewacin Najeriya',
+    'Menene muhimmancin kola nut a al\'adun Najeriya?',
+    'Faɗa mini tarihin Daular Sokoto',
+    'Waɗanne al\'adun gargajiya na Hausa game da aure?',
+  ],
+  english: [
+    'Tell me a Hausa folktale about wisdom',
+    'What are common Hausa proverbs about patience?',
+    'Explain the Durbar festival of Northern Nigeria',
+    'What is the significance of kola nut in Nigerian ceremonies?',
+    'Tell me about the Sokoto Caliphate history',
+    'Compare Yoruba Abiku and Igbo Ogbanje traditions',
+  ],
+  yoruba: [
+    'Sọ ìtàn àtẹnudẹnu Yorùbá kan nípa ọgbọ́n',
+    'Kí ni àwọn òwe Yorùbá nípa sùúrù?',
+    'Ṣàlàyé ìjọba Ọ̀yọ́ àtijọ́',
+    'Kí ni ìjókòó kọ́là nínú àṣà Yorùbá?',
+    'Sọ nípa Sàngó, ọlọ́run àárá Yorùbá',
+    'Ṣàlàyé ìdánilẹ́kọ̀ọ́ Egúngún',
+  ],
+  igbo: [
+    'Kọọ m akụkọ ifo Igbo banyere amamihe',
+    'Gwa m ilu Igbo banyere ndụ',
+    'Kọọ m banyere ọchịchọ Nri Kingdom',
+    'Gwa m banyere Iri Ji ọhụrụ n\'Igboland',
+    'Kọọ m banyere Ogbanje na omenala Igbo',
+    'Gwa m banyere ọrụ eze n\'obodo Igbo',
+  ],
+  pidgin: [
+    'Tell me Hausa folktale about wisdom',
+    'Wetin be common Hausa proverbs about patience?',
+    'Explain Durbar festival for Northern Nigeria',
+    'Wetin be the meaning of kola nut for Nigerian culture?',
+    'Tell me about Sokoto Caliphate history',
+    'Compare Yoruba and Igbo traditions',
+  ],
+};
 
 function SessionsList({ sessions, sessionsLoading, activeSessionId, onSelect, onDelete, onNew, isPending, t }) {
   return (
@@ -165,6 +209,12 @@ export default function ChatPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { t } = useTranslation();
+  const { lang } = useLanguage();
+  const searchParams = useSearchParams();
+
+  // Parse uploadId from query param (set when user clicks "Ask AI" on any document in Knowledge Library)
+  const uploadId = searchParams.get('uploadId');
+  const uploadTitle = searchParams.get('uploadTitle') ? decodeURIComponent(searchParams.get('uploadTitle')) : null;
 
   const { data: sessionsData, isLoading: sessionsLoading } = useQuery({
     queryKey: ['chat-sessions'],
@@ -180,6 +230,14 @@ export default function ChatPage() {
   useEffect(() => {
     if (sessionData?.messages) setMessages(sessionData.messages);
   }, [sessionData]);
+
+  // Auto-start a session when arriving from Knowledge Library with a document
+  useEffect(() => {
+    if (uploadId && !activeSessionId && !newSessionMutation.isPending) {
+      newSessionMutation.mutate();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uploadId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -201,7 +259,8 @@ export default function ChatPage() {
     mutationFn: ({ sessionId, message }) =>
       api.post(`/chat/${sessionId}/messages`, {
         message,
-        preferredLanguage: user?.preferredLanguage || 'english',
+        preferredLanguage: lang || user?.preferredLanguage || 'hausa',
+        uploadId: uploadId || null,
       }).then((r) => r.data.data),
     onSuccess: (data) => {
       setMessages((prev) => [...prev, { role: 'assistant', content: data.response }]);
@@ -264,7 +323,9 @@ export default function ChatPage() {
               </div>
               <h1 className="font-serif text-xl sm:text-2xl font-bold mb-2">AI Cultural Chat</h1>
               <p className="text-muted-foreground max-w-xs text-sm mb-2">
-                Ask Gemma AI about Nigerian culture, traditions, proverbs, and preserved wisdom.
+                {lang === 'hausa'
+                  ? 'Tambaya Gemma AI game da al\'adun Hausa, tatsuniyoyi, karin magana, da hikimar da aka adana.'
+                  : 'Ask Gemma AI about Nigerian culture, traditions, proverbs, and preserved wisdom.'}
               </p>
               <div className="flex items-center gap-1.5 mb-6 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
                 <span className="text-xs font-medium text-primary">🌍 Language is no longer a barrier</span>
@@ -278,7 +339,7 @@ export default function ChatPage() {
                 Start Conversation
               </Button>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-sm w-full">
-                {SUGGESTED_PROMPTS.map((prompt) => (
+                {(SUGGESTED_PROMPTS_BY_LANG[lang] || SUGGESTED_PROMPTS_BY_LANG.hausa).map((prompt) => (
                   <button
                     key={prompt}
                     onClick={async () => {
@@ -312,6 +373,19 @@ export default function ChatPage() {
                 </span>
               </div>
 
+              {/* Document context banner */}
+              {uploadId && (
+                <div className="mx-4 mt-3 mb-1 flex items-start gap-2 px-3 py-2.5 rounded-xl bg-primary/8 border border-primary/20">
+                  <FileText className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-primary truncate">{uploadTitle || 'Uploaded Document'}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {lang === 'hausa' ? 'Gemma yana amsa tambayoyi game da wannan takarda' : 'Gemma is answering questions about this document'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Messages */}
               <div
                 className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4"
@@ -321,18 +395,57 @@ export default function ChatPage() {
               >
                 {messages.length === 0 && !sendMutation.isPending && (
                   <div className="text-center py-8">
-                    <p className="text-muted-foreground text-sm mb-4">Ask in any language — upload in Hausa, ask in English, switch to Yoruba.</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-sm mx-auto">
-                      {SUGGESTED_PROMPTS.map((prompt) => (
-                        <button
-                          key={prompt}
-                          onClick={() => handleSend(prompt)}
-                          className="text-left text-xs p-3 rounded-xl border border-border/50 hover:border-primary/40 hover:bg-muted/50 transition-colors text-muted-foreground"
-                        >
-                          {prompt}
-                        </button>
-                      ))}
-                    </div>
+                    {uploadId ? (
+                      <>
+                        <div className="w-10 h-10 rounded-xl gradient-brand flex items-center justify-center mx-auto mb-3">
+                          <FileText className="w-5 h-5 text-white" />
+                        </div>
+                        <p className="text-sm font-medium mb-1">{uploadTitle || 'Uploaded Document'}</p>
+                        <p className="text-xs text-muted-foreground mb-4">
+                          {lang === 'hausa' ? 'Zaɓi tambaya ko rubuta naka' : 'Choose a question or type your own'}
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-sm mx-auto">
+                          {(lang === 'hausa' ? [
+                            'Menene darasi na ɗabi\'a?',
+                            'Bayyana wannan a Hausa mai sauƙi',
+                            'Taƙaita wannan a Turanci',
+                            'Menene ma\'anar al\'adu?',
+                            'Menene haɗin kai da al\'adun Hausa?',
+                            'Fitar da karin magana daga wannan',
+                          ] : [
+                            'What is the moral lesson?',
+                            'Explain this in simple Hausa',
+                            'Summarize this in English',
+                            'What is the cultural meaning?',
+                            'How does this connect to Hausa traditions?',
+                            'Extract proverbs from this document',
+                          ]).map((prompt) => (
+                            <button
+                              key={prompt}
+                              onClick={() => handleSend(prompt)}
+                              className="text-left text-xs p-3 rounded-xl border border-border/50 hover:border-primary/40 hover:bg-muted/50 transition-colors text-muted-foreground"
+                            >
+                              {prompt}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-muted-foreground text-sm mb-4">Ask in any language — upload in Hausa, ask in English, switch to Yoruba.</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-sm mx-auto">
+                          {(SUGGESTED_PROMPTS_BY_LANG[lang] || SUGGESTED_PROMPTS_BY_LANG.hausa).map((prompt) => (
+                            <button
+                              key={prompt}
+                              onClick={() => handleSend(prompt)}
+                              className="text-left text-xs p-3 rounded-xl border border-border/50 hover:border-primary/40 hover:bg-muted/50 transition-colors text-muted-foreground"
+                            >
+                              {prompt}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -399,7 +512,7 @@ export default function ChatPage() {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
                     }}
-                    placeholder="Ask about Nigerian culture… (Enter to send)"
+                    placeholder={lang === 'hausa' ? 'Tambaya game da al\'adun Najeriya… (Enter don aika)' : 'Ask about Nigerian culture… (Enter to send)'}
                     disabled={sendMutation.isPending}
                   />
                   <Button

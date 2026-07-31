@@ -81,8 +81,11 @@ export default function HomePage() {
       {/* Hero */}
       <section className="pt-32 pb-24 px-6">
         <div className="max-w-5xl mx-auto text-center">
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0}>
-            <Badge variant="secondary" className="mb-6 px-4 py-1.5 text-sm font-medium">
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0} className="flex flex-wrap gap-2 justify-center mb-6">
+            <Badge variant="secondary" className="px-4 py-1.5 text-sm font-medium">
+              🇳🇬 Hausa · Yoruba · Igbo · English
+            </Badge>
+            <Badge className="px-4 py-1.5 text-sm font-medium gradient-brand text-white border-0">
               Powered by Google Gemma 4
             </Badge>
           </motion.div>
@@ -92,24 +95,34 @@ export default function HomePage() {
             initial="hidden"
             animate="visible"
             custom={1}
-            className="font-serif text-4xl sm:text-5xl md:text-7xl font-bold leading-tight text-balance mb-6"
+            className="font-serif text-4xl sm:text-5xl md:text-7xl font-bold leading-tight text-balance mb-4"
           >
-            Every Elder is a{' '}
-            <span className="gradient-text">Library.</span>
+            Kiyaye Ilimin{' '}
+            <span className="gradient-text">Hausawa</span>
             <br />
-            Every Story{' '}
-            <span className="gradient-text">Matters.</span>
+            da Taimakon{' '}
+            <span className="gradient-text">AI.</span>
           </motion.h1>
 
           <motion.p
             variants={fadeUp}
             initial="hidden"
             animate="visible"
+            custom={1.5}
+            className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto mb-2 leading-relaxed font-medium"
+          >
+            Preserving Hausa Knowledge with AI — Starting with Northern Nigeria.
+          </motion.p>
+
+          <motion.p
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
             custom={2}
-            className="text-base sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed"
+            className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed"
           >
             MemoryAI Nigeria uses Google Gemma 4 to preserve, understand, and make accessible
-            Nigeria&apos;s indigenous wisdom across Hausa, Yoruba, and Igbo — before it&apos;s lost forever.
+            Nigeria&apos;s indigenous wisdom — starting with Hausa, expanding to Yoruba, Igbo, and beyond.
           </motion.p>
 
           <motion.div
@@ -204,10 +217,13 @@ export default function HomePage() {
           className="max-w-3xl mx-auto text-center p-12 rounded-3xl gradient-brand text-white"
         >
           <h2 className="font-serif text-4xl font-bold mb-4">
-            Nigeria&apos;s Heritage Deserves to Live Forever
+            Preserving Nigerian Indigenous Knowledge, Starting with Hausa
           </h2>
-          <p className="text-white/80 text-lg mb-8">
-            Join the movement to preserve indigenous knowledge for future generations.
+          <p className="text-white/80 text-lg mb-2">
+            Kowane dattijo ɗakin karatu ne. Kowane labari yana da muhimmanci.
+          </p>
+          <p className="text-white/60 text-base mb-8">
+            Every elder is a library. Every story matters.
           </p>
           <Link href="/register">
             <Button size="lg" variant="secondary" className="px-8 h-12 text-base gap-2">
@@ -227,7 +243,7 @@ export default function HomePage() {
             </div>
             <span>MemoryAI Nigeria © 2026</span>
           </div>
-          <p>Preserving Nigeria&apos;s Indigenous Wisdom Through AI</p>
+          <p>Kiyaye Ilimin Gargajiya na Najeriya ta Hanyar AI &mdash; Preserving Nigerian Indigenous Wisdom Through AI</p>
         </div>
       </footer>
     </div>

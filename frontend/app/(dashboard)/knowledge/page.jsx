@@ -5,7 +5,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   BookOpen, Globe, Music, Landmark, Flame, Scroll, Heart,
-  Search, Upload, X, Languages, Sparkles, FileText, Mic, Image, Filter, Quote,
+  Search, Upload, X, Languages, Sparkles, FileText, Mic, Image, Filter, Quote, MessageSquare,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,9 +14,11 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import { LANGUAGE_COLORS, SUPPORTED_LANGUAGES } from '@/lib/constants';
+import { useLanguage } from '@/hooks/useLanguage';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -164,14 +166,15 @@ function StoryCard({ item, i }) {
 
 // ── Upload Card ───────────────────────────────────────────────────────────────
 
-function UploadCard({ item, i }) {
+function UploadCard({ item, i, onAskAI }) {
   const Icon = UPLOAD_TYPE_ICONS[item.uploadType] || FileText;
   const fileUrl = item.fileUrl && !item.fileUrl.startsWith('local://') ? item.fileUrl : null;
+  const hasText = !!item.extractedText || item.analysisStatus === 'completed';
 
   return (
     <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={i}>
-      <Card className="border-border/50 hover:border-primary/30 hover:shadow-md transition-all h-full">
-        <CardContent className="p-4">
+      <Card className="border-border/50 hover:border-primary/30 hover:shadow-md transition-all h-full flex flex-col">
+        <CardContent className="p-4 flex flex-col flex-1">
           <div className="flex items-start gap-3 mb-2">
             <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
               <Icon className="w-4 h-4 text-muted-foreground" />
@@ -180,26 +183,44 @@ function UploadCard({ item, i }) {
               {fileUrl ? (
                 <a href={fileUrl} target="_blank" rel="noopener noreferrer"
                   className="font-semibold text-sm truncate hover:text-primary transition-colors flex items-center gap-1">
-                  <span className="truncate">{item.originalName}</span>
+                  <span className="truncate">{item.ingestion?.metadata?.title || item.originalName}</span>
                 </a>
               ) : (
-                <p className="font-semibold text-sm truncate">{item.originalName}</p>
+                <p className="font-semibold text-sm truncate">{item.ingestion?.metadata?.title || item.originalName}</p>
               )}
-              <p className="text-xs text-muted-foreground capitalize">{item.uploadType}</p>
+              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                <p className="text-xs text-muted-foreground capitalize">{item.uploadType}</p>
+                {item.ingestion?.detectedLanguage && (
+                  <Badge className={`text-xs ${LANGUAGE_COLORS[item.ingestion.detectedLanguage] || ''}`}>
+                    {item.ingestion.detectedLanguage}
+                  </Badge>
+                )}
+                <Badge className={`text-xs shrink-0 ${
+                  item.analysisStatus === 'completed'
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                    : 'bg-muted text-muted-foreground'
+                }`}>
+                  {item.analysisStatus || 'pending'}
+                </Badge>
+              </div>
             </div>
-            <Badge className={`text-xs shrink-0 ${
-              item.analysisStatus === 'completed'
-                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                : 'bg-muted text-muted-foreground'
-            }`}>
-              {item.analysisStatus || 'pending'}
-            </Badge>
           </div>
+
           {item.ingestion?.summaries?.short && (
             <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed mb-2">
               {item.ingestion.summaries.short}
             </p>
           )}
+
+          {item.ingestion?.aiUnderstanding?.moralLessons?.length > 0 && (
+            <div className="mb-2">
+              <p className="text-xs font-medium text-foreground mb-0.5">Moral:</p>
+              <p className="text-xs text-muted-foreground line-clamp-2">
+                {item.ingestion.aiUnderstanding.moralLessons[0]}
+              </p>
+            </div>
+          )}
+
           {item.ingestion?.aiUnderstanding?.subThemes?.length > 0 && (
             <div className="flex flex-wrap gap-1 mb-3">
               {item.ingestion.aiUnderstanding.subThemes.slice(0, 3).map((t) => (
@@ -207,19 +228,24 @@ function UploadCard({ item, i }) {
               ))}
             </div>
           )}
-          <div className="flex gap-2">
+
+          <div className="flex gap-2 mt-auto pt-2">
+            {hasText && (
+              <Button
+                size="sm"
+                className="gap-1.5 h-7 text-xs gradient-brand text-white border-0 flex-1"
+                onClick={() => onAskAI(item)}
+              >
+                <MessageSquare className="w-3 h-3" /> Ask AI
+              </Button>
+            )}
             {fileUrl && (
               <a href={fileUrl} target="_blank" rel="noopener noreferrer">
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
-                  View File
+                  View
                 </Button>
               </a>
             )}
-            <Link href="/upload">
-              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
-                <Upload className="w-3 h-3" /> Details
-              </Button>
-            </Link>
           </div>
         </CardContent>
       </Card>
@@ -231,9 +257,11 @@ function UploadCard({ item, i }) {
 
 export default function KnowledgeLibraryPage() {
   const [activeCategory, setActiveCategory] = useState('all');
-  const [language, setLanguage] = useState('all');
+  const [language, setLanguage] = useState('hausa');
   const [searchQuery, setSearchQuery] = useState('');
   const [inputValue, setInputValue] = useState('');
+  const router = useRouter();
+  const { lang } = useLanguage();
 
   const hasFilters = activeCategory !== 'all' || language !== 'all' || !!searchQuery;
 
@@ -283,10 +311,9 @@ export default function KnowledgeLibraryPage() {
     },
   });
 
-  // Uploads: fetch all then filter client-side (uploads don't have knowledgeType)
   const { data: uploadsRaw, isLoading: uploadsLoading } = useQuery({
     queryKey: ['knowledge-uploads'],
-    queryFn: () => api.get('/uploads').then((r) => r.data.data || []),
+    queryFn: () => api.get('/uploads?limit=50').then((r) => r.data.data || []),
   });
 
   const stories = storiesData || [];
@@ -314,8 +341,13 @@ export default function KnowledgeLibraryPage() {
 
   const clearAll = () => {
     setActiveCategory('all');
-    setLanguage('all');
+    setLanguage('hausa');
     clearSearch();
+  };
+
+  // Open chat pre-loaded with this document — any user can do this
+  const handleAskAI = (upload) => {
+    router.push(`/chat?uploadId=${upload._id}&uploadTitle=${encodeURIComponent(upload.ingestion?.metadata?.title || upload.originalName)}`);
   };
 
   return (
@@ -533,7 +565,7 @@ export default function KnowledgeLibraryPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {uploads.map((item, i) => <UploadCard key={item._id} item={item} i={i} />)}
+                {uploads.map((item, i) => <UploadCard key={item._id} item={item} i={i} onAskAI={handleAskAI} />)}
               </div>
             )}
           </TabsContent>

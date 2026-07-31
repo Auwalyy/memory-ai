@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useLanguage } from '@/hooks/useLanguage';
 import { cn } from '@/lib/utils';
 
 // ── Nav structure ────────────────────────────────────────────────────────────
@@ -23,12 +24,12 @@ function buildNav(t) {
   return [
     { href: '/dashboard',     icon: LayoutDashboard, label: t('dashboard') },
     {
-      label: 'Knowledge Library',
+      label: t('knowledgeLibrary') || 'Knowledge Library',
       icon: BookOpen,
       children: [
         { href: '/stories',   label: t('stories') },
         { href: '/proverbs',  label: t('proverbs') },
-        { href: '/knowledge', label: 'Knowledge Library' },
+        { href: '/knowledge', label: t('knowledgeLibrary') || 'Knowledge Library' },
       ],
     },
     { href: '/upload',        icon: Upload,        label: t('upload') },
@@ -137,6 +138,7 @@ function SidebarContent({ onNavigate }) {
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const { t } = useTranslation();
+  const { lang } = useLanguage();
   const router = useRouter();
 
   const MAIN_NAV = buildNav(t);
@@ -162,7 +164,7 @@ function SidebarContent({ onNavigate }) {
       {/* Scrollable nav */}
       <nav className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5 scrollbar-none" aria-label="Main navigation">
 
-        <SectionLabel>Main Navigation</SectionLabel>
+        <SectionLabel>{t('mainNav') || 'Main Navigation'}</SectionLabel>
         {MAIN_NAV.map((item) =>
           item.children ? (
             <NavGroup key={item.label} item={item} onClick={onNavigate} />
@@ -171,14 +173,14 @@ function SidebarContent({ onNavigate }) {
           )
         )}
 
-        <SectionLabel>Analytics</SectionLabel>
+              <SectionLabel>{t('analyticsNav') || 'Analytics'}</SectionLabel>
         {ANALYTICS_NAV_KEYS.map((item) => (
           <NavLink key={item.href} href={item.href} icon={item.icon} label={item.labelKey} onClick={onNavigate} />
         ))}
 
         {isAdmin && (
           <>
-            <SectionLabel>Administration</SectionLabel>
+            <SectionLabel>{t('adminNav') || 'Administration'}</SectionLabel>
             {ADMIN_NAV_KEYS.map((item) => (
               <NavLink key={item.href} href={item.href} icon={item.icon} label={item.labelKey} onClick={onNavigate} />
             ))}
@@ -186,7 +188,7 @@ function SidebarContent({ onNavigate }) {
         )}
 
         {!isAdmin && (
-          <NavLink href="/profile" icon={Settings} label="Settings" onClick={onNavigate} />
+          <NavLink href="/profile" icon={Settings} label={t('settings') || 'Settings'} onClick={onNavigate} />
         )}
       </nav>
 
@@ -202,7 +204,7 @@ function SidebarContent({ onNavigate }) {
             ? <Sun className="w-4 h-4 shrink-0" />
             : <Moon className="w-4 h-4 shrink-0" />
           }
-          {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+          {theme === 'dark' ? t('lightMode') : t('darkMode')}
         </button>
 
         <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg hover:bg-muted transition-colors">

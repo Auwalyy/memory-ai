@@ -5,25 +5,47 @@ import translations from '@/lib/i18n';
 
 const LanguageContext = createContext(null);
 
-export function LanguageProvider({ children, initialLang = 'english' }) {
-  const [lang, setLangState] = useState(initialLang);
+const STORAGE_KEY = 'memoryai_lang';
+const FIRST_LAUNCH_KEY = 'memoryai_lang_chosen';
 
-  // Sync when user object changes (e.g. after login or profile update)
-  const syncLang = (newLang) => {
-    if (newLang && translations[newLang]) {
-      setLangState(newLang);
+export function LanguageProvider({ children }) {
+  const [lang, setLangState] = useState('hausa');
+  const [firstLaunch, setFirstLaunch] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    const chosen = localStorage.getItem(FIRST_LAUNCH_KEY);
+    if (stored && translations[stored]) {
+      setLangState(stored);
     }
-  };
+    if (!chosen) {
+      setFirstLaunch(true);
+    }
+    setMounted(true);
+  }, []);
 
   const setLanguage = (newLang) => {
-    if (translations[newLang]) setLangState(newLang);
+    if (!translations[newLang]) return;
+    setLangState(newLang);
+    localStorage.setItem(STORAGE_KEY, newLang);
+  };
+
+  const confirmLanguage = (newLang) => {
+    setLanguage(newLang);
+    localStorage.setItem(FIRST_LAUNCH_KEY, '1');
+    setFirstLaunch(false);
+  };
+
+  const syncLang = (newLang) => {
+    if (newLang && translations[newLang]) setLangState(newLang);
   };
 
   const t = (key) =>
     translations[lang]?.[key] || translations.english[key] || key;
 
   return (
-    <LanguageContext.Provider value={{ lang, setLanguage, syncLang, t }}>
+    <LanguageContext.Provider value={{ lang, setLanguage, syncLang, t, firstLaunch, confirmLanguage, mounted }}>
       {children}
     </LanguageContext.Provider>
   );

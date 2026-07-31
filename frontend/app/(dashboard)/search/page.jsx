@@ -40,17 +40,26 @@ export default function SearchPage() {
   const [query, setQuery] = useState('');
   const [submitted, setSubmitted] = useState('');
   const [mode, setMode] = useState('text');
+  const [langFilter, setLangFilter] = useState('hausa');
   const { t } = useTranslation();
 
   const { data: textResults, isLoading: textLoading } = useQuery({
-    queryKey: ['search-text', submitted],
-    queryFn: () => api.get(`/search?q=${encodeURIComponent(submitted)}`).then((r) => r.data.data),
+    queryKey: ['search-text', submitted, langFilter],
+    queryFn: () => {
+      const params = new URLSearchParams({ q: submitted });
+      if (langFilter) params.set('language', langFilter);
+      return api.get(`/search?${params}`).then((r) => r.data.data);
+    },
     enabled: !!submitted && mode === 'text',
   });
 
   const { data: semanticResults, isLoading: semanticLoading } = useQuery({
-    queryKey: ['search-semantic', submitted],
-    queryFn: () => api.get(`/search/semantic?q=${encodeURIComponent(submitted)}`).then((r) => r.data.data),
+    queryKey: ['search-semantic', submitted, langFilter],
+    queryFn: () => {
+      const params = new URLSearchParams({ q: submitted });
+      if (langFilter) params.set('language', langFilter);
+      return api.get(`/search/semantic?${params}`).then((r) => r.data.data);
+    },
     enabled: !!submitted && mode === 'semantic',
   });
 
@@ -87,7 +96,7 @@ export default function SearchPage() {
         </Button>
       </form>
 
-      {/* Mode toggle + meta */}
+      {/* Mode toggle + language filter + meta */}
       <div className="filter-panel">
         <div className="flex items-center gap-3">
           <span className="section-label shrink-0">Mode</span>
@@ -108,6 +117,24 @@ export default function SearchPage() {
             </button>
           </div>
         </div>
+
+        <div className="filter-divider" />
+
+        <div className="flex items-center gap-3">
+          <span className="section-label shrink-0">Language</span>
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
+            {[['', 'All'], ['hausa', '🟢 Hausa'], ['english', '⚪ English'], ['yoruba', '🔵 Yoruba'], ['igbo', '🟣 Igbo']].map(([code, label]) => (
+              <button
+                key={code}
+                className={`filter-chip shrink-0 ${langFilter === code ? 'active' : ''}`}
+                onClick={() => setLangFilter(code)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {submitted && !isLoading && (
           <>
             <div className="filter-divider" />
@@ -201,8 +228,8 @@ export default function SearchPage() {
       {!submitted && (
         <div className="text-center py-16 text-muted-foreground">
           <Search className="w-10 h-10 mx-auto mb-4 opacity-30" />
-          <p className="text-base font-medium mb-2">Search Nigeria&apos;s Indigenous Knowledge</p>
-          <p className="text-sm">Try &quot;Yoruba folktale&quot;, &quot;Hausa proverb&quot;, or &quot;Igbo tradition&quot;</p>
+          <p className="text-base font-medium mb-2">{t('searchEmptyTitle') || 'Search Nigerian Indigenous Knowledge'}</p>
+          <p className="text-sm">{t('searchEmptyHint') || 'Try Hausa proverb, Yoruba folktale, or Igbo tradition'}</p>
         </div>
       )}
     </div>

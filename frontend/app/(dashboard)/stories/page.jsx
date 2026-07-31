@@ -30,6 +30,7 @@ const schema = z.object({
   source: z.string().optional(),
 });
 
+const LANG_ORDER = ['hausa', 'english', 'yoruba', 'igbo', 'pidgin'];
 const LANG_EMOJI = { hausa: '🟢', yoruba: '🔵', igbo: '🟣', english: '⚪', pidgin: '🟠' };
 const TYPE_LABELS = {
   folktale: 'Folktale', proverb: 'Proverb', oral_history: 'Oral History',
@@ -129,7 +130,7 @@ function StoryListItem({ story, onDelete }) {
 export default function StoriesPage() {
   const [open, setOpen] = useState(false);
   const [sampleIdx, setSampleIdx] = useState(0);
-  const [langFilter, setLangFilter] = useState('');
+  const [langFilter, setLangFilter] = useState('hausa');
   const [typeFilter, setTypeFilter] = useState('');
   const [sortBy, setSortBy] = useState('-createdAt');
   const [viewMode, setViewMode] = useState('list');
@@ -225,7 +226,7 @@ export default function StoriesPage() {
         <div className="flex items-center gap-3 min-w-0">
           <span className="section-label w-14 shrink-0">Language</span>
           <div className="flex gap-1.5 overflow-x-auto scrollbar-none flex-1">
-            {['', ...SUPPORTED_LANGUAGES].map((lang) => (
+            {['', ...LANG_ORDER].map((lang) => (
               <button
                 key={lang}
                 className={`filter-chip shrink-0 ${langFilter === lang ? 'active' : ''}`}

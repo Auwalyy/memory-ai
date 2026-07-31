@@ -25,8 +25,8 @@ export default function DashboardPage() {
   const { lang, setLanguage } = useLanguage();
 
   const LANG_OPTIONS = [
-    { code: 'english', flag: '🇬🇧', short: 'EN' },
     { code: 'hausa',   flag: '🟢',  short: 'HA' },
+    { code: 'english', flag: '🇬🇧', short: 'EN' },
     { code: 'yoruba',  flag: '🔵',  short: 'YO' },
     { code: 'igbo',    flag: '🟣',  short: 'IG' },
     { code: 'pidgin',  flag: '🟠',  short: 'PD' },
@@ -145,8 +145,8 @@ export default function DashboardPage() {
             <FlaskConical className="w-5 h-5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-sm">Try with prebuilt sample data</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Each section has ready-made Nigerian stories, proverbs, and uploads — no external source needed.</p>
+            <p className="font-semibold text-sm">{t('sampleDataTitle')}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t('sampleDataDesc')}</p>
           </div>
           <div className="flex flex-wrap gap-2 shrink-0">
             <Link href="/stories"><Button size="sm" variant="outline" className="h-8 text-xs gap-1.5"><BookOpen className="w-3.5 h-3.5" /> Stories</Button></Link>

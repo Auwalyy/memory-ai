@@ -95,7 +95,8 @@ const uploadService = {
   },
 
   async analyzeUpload(uploadId, userId) {
-    const upload = await Upload.findOne({ _id: uploadId, uploader: userId });
+    // Any authenticated user can trigger analysis on any upload
+    const upload = await Upload.findById(uploadId);
     if (!upload) throw new AppError('Upload not found', 404);
     if (!upload.extractedText) throw new AppError('No text available for analysis', 400);
 
@@ -114,13 +115,30 @@ const uploadService = {
     }
   },
 
-  async getUploads(userId, query) {
+  async getUploads(query) {
     const { page, limit, skip } = parsePagination(query);
     const [data, total] = await Promise.all([
-      Upload.find({ uploader: userId }).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      Upload.find({}).sort({ createdAt: -1 }).skip(skip).limit(limit)
+        .populate('uploader', 'name username'),
+      Upload.countDocuments({}),
+    ]);
+    return { data, pagination: buildPaginationMeta(total, page, limit) };
+  },
+
+  async getMyUploads(userId, query) {
+    const { page, limit, skip } = parsePagination(query);
+    const [data, total] = await Promise.all([
+      Upload.find({ uploader: userId }).sort({ createdAt: -1 }).skip(skip).limit(limit)
+        .populate('uploader', 'name username'),
       Upload.countDocuments({ uploader: userId }),
     ]);
     return { data, pagination: buildPaginationMeta(total, page, limit) };
+  },
+
+  async getUploadById(uploadId) {
+    const upload = await Upload.findById(uploadId).populate('uploader', 'name username');
+    if (!upload) throw new AppError('Upload not found', 404);
+    return upload;
   },
 };
 

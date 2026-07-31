@@ -10,9 +10,18 @@ const controller = {
     } catch (err) { next(err); }
   },
 
+  // All uploads across all users (for Knowledge Library, Chat context, etc.)
   async getUploads(req, res, next) {
     try {
-      const { data, pagination } = await uploadService.getUploads(req.user._id, req.query);
+      const { data, pagination } = await uploadService.getUploads(req.query);
+      sendPaginated(res, data, pagination);
+    } catch (err) { next(err); }
+  },
+
+  // Only the current user's own uploads (for My Contributions page)
+  async getMyUploads(req, res, next) {
+    try {
+      const { data, pagination } = await uploadService.getMyUploads(req.user._id, req.query);
       sendPaginated(res, data, pagination);
     } catch (err) { next(err); }
   },
@@ -21,6 +30,13 @@ const controller = {
     try {
       const result = await uploadService.analyzeUpload(req.params.id, req.user._id);
       sendSuccess(res, result);
+    } catch (err) { next(err); }
+  },
+
+  async getUpload(req, res, next) {
+    try {
+      const upload = await uploadService.getUploadById(req.params.id);
+      sendSuccess(res, { upload });
     } catch (err) { next(err); }
   },
 };

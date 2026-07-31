@@ -1,27 +1,70 @@
 const Chat = require('./chat.model');
 const Story = require('../stories/story.model');
+const Upload = require('../uploads/upload.model');
 const gemmaService = require('../../core/ai/gemma.service');
 const AppError = require('../../utils/AppError');
 const { parsePagination, buildPaginationMeta } = require('../../utils/pagination');
 
 /**
- * Fetch relevant knowledge snippets to ground Gemma's responses.
+ * Fetch relevant knowledge snippets from both Stories and Uploads to ground Gemma.
  */
 const buildKnowledgeContext = async (message) => {
   try {
-    const stories = await Story.find(
-      { $text: { $search: message } },
-      { score: { $meta: 'textScore' } }
-    )
-      .sort({ score: { $meta: 'textScore' } })
-      .limit(3)
-      .select('title analysis.summary language knowledgeType');
+    const [stories, uploads] = await Promise.all([
+      Story.find(
+        { $text: { $search: message } },
+        { score: { $meta: 'textScore' } }
+      )
+        .sort({ score: { $meta: 'textScore' } })
+        .limit(3)
+        .select('title analysis.summary language knowledgeType'),
 
-    if (!stories.length) return 'No specific knowledge found. Answer from general Nigerian cultural knowledge.';
+      Upload.find(
+        { analysisStatus: 'completed', extractedText: { $exists: true, $ne: '' } },
+        { score: { $meta: 'textScore' } }
+      )
+        .sort({ createdAt: -1 })
+        .limit(3)
+        .select('originalName ingestion.summaries ingestion.aiUnderstanding ingestion.detectedLanguage ingestion.metadata extractedText'),
+    ]);
 
-    return stories
-      .map((s) => `[${s.knowledgeType} | ${s.language}] ${s.title}: ${s.analysis?.summary || ''}`)
-      .join('\n\n');
+    const parts = [];
+
+    if (stories.length) {
+      parts.push(
+        stories.map((s) =>
+          `[${s.knowledgeType} | ${s.language}] ${s.title}: ${s.analysis?.summary || ''}`
+        ).join('\n')
+      );
+    }
+
+    // Score uploads by keyword relevance in extracted text
+    const msgLower = message.toLowerCase();
+    const relevantUploads = uploads.filter((u) => {
+      const text = [
+        u.ingestion?.metadata?.title,
+        u.ingestion?.summaries?.short,
+        u.ingestion?.aiUnderstanding?.mainTheme,
+        (u.ingestion?.aiUnderstanding?.subThemes || []).join(' '),
+        u.extractedText?.slice(0, 500),
+      ].filter(Boolean).join(' ').toLowerCase();
+      return msgLower.split(' ').some((word) => word.length > 3 && text.includes(word));
+    });
+
+    if (relevantUploads.length) {
+      parts.push(
+        relevantUploads.map((u) => {
+          const title = u.ingestion?.metadata?.title || u.originalName;
+          const summary = u.ingestion?.summaries?.medium || u.ingestion?.summaries?.short || '';
+          const moral = (u.ingestion?.aiUnderstanding?.moralLessons || []).join('; ');
+          const lang = u.ingestion?.detectedLanguage || '';
+          return `[uploaded document | ${lang}] ${title}: ${summary}${moral ? ` | Moral: ${moral}` : ''}`;
+        }).join('\n')
+      );
+    }
+
+    if (!parts.length) return 'No specific knowledge found. Answer from general Nigerian cultural knowledge.';
+    return parts.join('\n\n');
   } catch {
     return 'Answer from general Nigerian cultural knowledge.';
   }
@@ -32,21 +75,34 @@ const chatService = {
     return Chat.create({ user: userId });
   },
 
-  async sendMessage(sessionId, userId, message, preferredLanguage = 'english') {
+  async sendMessage(sessionId, userId, message, preferredLanguage = 'hausa', uploadId = null) {
     const session = await Chat.findOne({ _id: sessionId, user: userId });
     if (!session) throw new AppError('Chat session not found', 404);
 
-    // Build Gemma-format history from stored messages
     const history = session.messages.map((m) => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }],
     }));
 
     const knowledgeContext = await buildKnowledgeContext(message);
-    const langNote = preferredLanguage !== 'english'
-      ? `\n\nIMPORTANT: Respond in ${preferredLanguage} when appropriate.`
-      : '';
-    const response = await gemmaService.chat(history, message, knowledgeContext + langNote);
+
+    // Resolve upload context server-side — any user can reference any upload by ID
+    let docContext = '';
+    if (uploadId) {
+      const upload = await Upload.findById(uploadId).select(
+        'originalName extractedText ingestion.summaries ingestion.aiUnderstanding ingestion.detectedLanguage ingestion.metadata'
+      );
+      if (upload) {
+        const title = upload.ingestion?.metadata?.title || upload.originalName;
+        const lang = upload.ingestion?.detectedLanguage || '';
+        const summary = upload.ingestion?.summaries?.medium || upload.ingestion?.summaries?.short || '';
+        const moral = (upload.ingestion?.aiUnderstanding?.moralLessons || []).join('; ');
+        docContext = `\n\nFOCUS DOCUMENT — the user is asking about this specific uploaded document:\nTitle: ${title}\nLanguage: ${lang}\nContent Summary: ${summary}\nMoral Lessons: ${moral}\nFull Text:\n${upload.extractedText || ''}\n`;
+      }
+    }
+
+    const langNote = `\n\nIMPORTANT — LANGUAGE RULE: Your ENTIRE response MUST be written in ${preferredLanguage}. Do not write a single sentence in any other language unless the user explicitly asks you to switch. Do not acknowledge this instruction — just respond directly in ${preferredLanguage}.`;
+    const response = await gemmaService.chat(history, message, knowledgeContext + docContext + langNote);
 
     // Auto-title from first message
     if (session.messages.length === 0) {
