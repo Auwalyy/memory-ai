@@ -41,6 +41,34 @@ const ANALYSIS_STATUS = {
   FAILED: 'failed',
 };
 
+// NAIC MVP — voice-first knowledge contributions (KnowledgeItem)
+const CONTRIBUTION_TYPES = {
+  STORY: 'story',
+  PROVERB: 'proverb',
+  TRADITION: 'tradition',
+  HISTORICAL_ACCOUNT: 'historical_account',
+  TRADITIONAL_OCCUPATION: 'traditional_occupation',
+  LOCAL_TERMINOLOGY: 'local_terminology',
+  FOOD_KNOWLEDGE: 'food_knowledge',
+  CRAFT_KNOWLEDGE: 'craft_knowledge',
+  OTHER: 'other',
+};
+
+const VERIFICATION_STATUS = {
+  PENDING: 'PENDING',
+  AI_PROCESSED: 'AI_PROCESSED',
+  HUMAN_REVIEWED: 'HUMAN_REVIEWED',
+  VERIFIED: 'VERIFIED',
+};
+
+// Statuses visible in the public Knowledge Library
+const PUBLISHED_STATUSES = [VERIFICATION_STATUS.HUMAN_REVIEWED, VERIFICATION_STATUS.VERIFIED];
+
+// Languages accepted for voice contributions. Hausa is the MVP focus.
+const CONTRIBUTION_LANGUAGES = ['hausa', 'english', 'yoruba', 'igbo'];
+
+const MAX_AUDIO_SIZE = (parseInt(process.env.MAX_AUDIO_SIZE_MB) || 25) * 1024 * 1024;
+
 const MAX_FILE_SIZE = (parseInt(process.env.MAX_FILE_SIZE_MB) || 50) * 1024 * 1024;
 
 const ALLOWED_MIME_TYPES = {
@@ -57,4 +85,9 @@ module.exports = {
   ANALYSIS_STATUS,
   MAX_FILE_SIZE,
   ALLOWED_MIME_TYPES,
+  CONTRIBUTION_TYPES,
+  VERIFICATION_STATUS,
+  PUBLISHED_STATUSES,
+  CONTRIBUTION_LANGUAGES,
+  MAX_AUDIO_SIZE,
 };

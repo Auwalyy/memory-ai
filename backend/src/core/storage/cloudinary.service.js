@@ -50,4 +50,13 @@ const deleteFile = async (publicId, resourceType = 'image') => {
   }
 };
 
-module.exports = { uploadBuffer, deleteFile };
+/**
+ * True when real Cloudinary credentials (not the .env.example placeholders) are set.
+ */
+const isConfigured = () =>
+  Boolean(process.env.CLOUDINARY_CLOUD_NAME) &&
+  process.env.CLOUDINARY_CLOUD_NAME !== 'your_cloud_name' &&
+  Boolean(process.env.CLOUDINARY_API_SECRET) &&
+  process.env.CLOUDINARY_API_SECRET !== 'your_api_secret';
+
+module.exports = { uploadBuffer, deleteFile, isConfigured };
