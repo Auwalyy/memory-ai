@@ -17,9 +17,11 @@ const connect = async () => {
   try {
     const Story = require('../features/stories/story.model');
     const Proverb = require('../features/proverbs/proverb.model');
+    const KnowledgeItem = require('../features/knowledge/models/knowledge-item.model');
     await Promise.all([
       Story.syncIndexes(),
       Proverb.syncIndexes(),
+      KnowledgeItem.syncIndexes(),
     ]);
     logger.info('MongoDB indexes synced');
   } catch (err) {

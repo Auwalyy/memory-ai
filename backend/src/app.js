@@ -24,6 +24,9 @@ const knowledgeRoutes = require('./features/knowledge/knowledge.routes');
 const educationRoutes = require('./features/education/education.routes');
 const ingestionRoutes = require('./features/ingestion/ingestion.routes');
 const graphRoutes = require('./features/graph/graph.routes');
+const natlasRoutes = require('./features/natlas/natlas.routes');
+const analyticsRoutes = require('./features/analytics/analytics.routes');
+const { LOCAL_AUDIO_DIR } = require('./core/storage/audio.storage');
 
 const app = express();
 
@@ -60,6 +63,8 @@ const globalLimiter = rateLimit({
   message: { success: false, message: 'Too many requests. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
+  // Pipeline progress is polled every ~2s while N-ATLAS runs; do not count it
+  skip: (req) => req.method === 'GET' && req.path.startsWith('/v1/knowledge/jobs/'),
 });
 
 const aiLimiter = rateLimit({
@@ -77,6 +82,10 @@ app.use('/api/v1/stories/:id/translate', aiLimiter);
 app.use('/api/v1/stories/:id/podcast', aiLimiter);
 app.use('/api/v1/search/semantic', aiLimiter);
 app.use('/api/v1/education', aiLimiter);
+app.use('/api/v1/natlas/transcribe', aiLimiter);
+app.use('/api/v1/natlas/process', aiLimiter);
+app.use('/api/v1/knowledge/process', aiLimiter);
+app.use('/api/v1/knowledge/search', aiLimiter);
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
@@ -115,6 +124,13 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'MemoryAI Nigeria API', timestamp: new Date().toISOString() });
 });
 
+// Locally stored contribution recordings (used when Cloudinary is not configured).
+// Cross-origin so the frontend can play them in <audio>.
+app.use('/media/audio', (req, res, next) => {
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(LOCAL_AUDIO_DIR, { fallthrough: false, maxAge: '7d' }));
+
 // API routes
 const API = '/api/v1';
 app.use(`${API}/auth`, authRoutes);
@@ -129,6 +145,8 @@ app.use(`${API}/knowledge`, knowledgeRoutes);
 app.use(`${API}/education`, educationRoutes);
 app.use(`${API}/ingestion`, ingestionRoutes);
 app.use(`${API}/graph`, graphRoutes);
+app.use(`${API}/natlas`, natlasRoutes);
+app.use(`${API}/analytics`, analyticsRoutes);
 
 // 404 handler
 app.use((req, res, next) => {

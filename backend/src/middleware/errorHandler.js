@@ -12,6 +12,8 @@ const handleValidationError = (err) => {
 };
 const handleJWTError = () => new AppError('Invalid token. Please log in again.', 401);
 const handleJWTExpired = () => new AppError('Token expired. Please log in again.', 401);
+const handleMulterError = (err) =>
+  new AppError(err.code === 'LIMIT_FILE_SIZE' ? 'File is too large' : `Upload error: ${err.message}`, 400);
 
 // eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, next) => {
@@ -22,6 +24,7 @@ const errorHandler = (err, req, res, next) => {
   if (err.name === 'ValidationError') error = handleValidationError(err);
   if (err.name === 'JsonWebTokenError') error = handleJWTError();
   if (err.name === 'TokenExpiredError') error = handleJWTExpired();
+  if (err.name === 'MulterError') error = handleMulterError(err);
 
   const statusCode = error.statusCode || 500;
   const isOperational = error.isOperational || false;

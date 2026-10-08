@@ -476,7 +476,9 @@ const knowledgeService = {
       }
     }
     if (updates.location) {
-      const loc = { ...item.location?.toObject?.(), ...updates.location };
+      const provided = Object.fromEntries(Object.entries(updates.location).filter(([, v]) => v !== undefined));
+      const loc = { ...item.location?.toObject?.(), ...provided };
+      delete loc.label;
       item.location = { ...loc, label: locationLabel(loc) };
     }
     item.editedByContributorAt = new Date();

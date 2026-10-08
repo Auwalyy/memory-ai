@@ -42,4 +42,21 @@ const authorize = (...roles) => {
   };
 };
 
-module.exports = { authenticate, authorize };
+/**
+ * Attach req.user when a valid Bearer token is present; never rejects.
+ * Used by public endpoints that show more to owners and moderators.
+ */
+const optionalAuth = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return next();
+  try {
+    const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select('-password -refreshToken');
+    if (user && !user.isBlocked) req.user = user;
+  } catch (_) {
+    // Invalid/expired token on a public route: continue as anonymous visitor
+  }
+  next();
+};
+
+module.exports = { authenticate, authorize, optionalAuth };
