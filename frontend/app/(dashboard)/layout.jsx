@@ -5,9 +5,9 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
-  LayoutDashboard, BookOpen, Upload, MessageSquare, Network,
-  Sparkles, Search, User, BarChart2, ClipboardList, Users,
-  Settings, LogOut, Moon, Sun, Menu, ChevronDown, ChevronRight,
+  LayoutDashboard, BookOpen, Network, Search, User, BarChart2, ClipboardList, Users,
+  Settings, LogOut, Moon, Sun, Menu, ChevronDown, ChevronRight, Mic, ClipboardCheck,
+  Presentation, Layers,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
@@ -22,41 +22,45 @@ import { cn } from '@/lib/utils';
 
 function buildNav(t) {
   return [
-    { href: '/dashboard',     icon: LayoutDashboard, label: t('dashboard') },
-    {
-      label: t('knowledgeLibrary') || 'Knowledge Library',
-      icon: BookOpen,
-      children: [
-        { href: '/stories',   label: t('stories') },
-        { href: '/proverbs',  label: t('proverbs') },
-        { href: '/knowledge', label: t('knowledgeLibrary') || 'Knowledge Library' },
-      ],
-    },
-    { href: '/upload',        icon: Upload,        label: t('upload') },
-    { href: '/chat',          icon: MessageSquare, label: t('chat') },
-    { href: '/graph',         icon: Network,       label: t('graph') },
-    { href: '/education',     icon: Sparkles,      label: t('education') },
-    { href: '/search',        icon: Search,        label: t('search') },
-    { href: '/contributions', icon: User,          label: t('bookmarks') },
+    { href: '/dashboard',     icon: LayoutDashboard, label: t('home') },
+    { href: '/contribute',    icon: Mic,             label: t('contribute') },
+    { href: '/knowledge',     icon: BookOpen,        label: t('knowledgeLibrary') },
+    { href: '/explore',       icon: Network,         label: t('explore') },
+    { href: '/search',        icon: Search,          label: t('search') },
+    { href: '/contributions', icon: User,            label: t('myContributions') },
   ];
 }
 
-const ANALYTICS_NAV_KEYS = [
-  { href: '/analytics', icon: BarChart2, labelKey: 'Analytics' },
-];
+function buildEvaluationNav(t) {
+  return [
+    { href: '/verify',          icon: ClipboardCheck, label: t('verification') },
+    { href: '/demo',            icon: Presentation,   label: t('naicDemo') },
+    { href: '/admin/analytics', icon: BarChart2,      label: t('validationDashboard') },
+  ];
+}
+
+// Earlier MemoryAI tools, kept available but secondary to the voice archive
+function buildMoreTools(t) {
+  return {
+    label: t('moreTools'),
+    icon: Layers,
+    children: [
+      { href: '/archive',   label: t('textArchive') },
+      { href: '/stories',   label: t('stories') },
+      { href: '/proverbs',  label: t('proverbs') },
+      { href: '/upload',    label: t('upload') },
+      { href: '/chat',      label: t('chat') },
+      { href: '/graph',     label: t('graph') },
+      { href: '/education', label: t('education') },
+      { href: '/analytics', label: t('archiveAnalytics') },
+    ],
+  };
+}
 
 const ADMIN_NAV_KEYS = [
   { href: '/admin/reviews', icon: ClipboardList, labelKey: 'Pending Reviews' },
   { href: '/admin/users',   icon: Users,         labelKey: 'Users' },
   { href: '/profile',       icon: Settings,      labelKey: 'Settings' },
-];
-
-const BOTTOM_TABS_KEYS = [
-  { href: '/dashboard', icon: LayoutDashboard, labelKey: 'dashboard' },
-  { href: '/knowledge', icon: BookOpen,        labelKey: 'stories' },
-  { href: '/chat',      icon: MessageSquare,   labelKey: 'chat' },
-  { href: '/search',    icon: Search,          labelKey: 'search' },
-  { href: '/upload',    icon: Upload,          labelKey: 'upload' },
 ];
 
 // ── NavLink ──────────────────────────────────────────────────────────────────
@@ -154,7 +158,7 @@ function SidebarContent({ onNavigate }) {
           </div>
           <div>
             <span className="font-serif font-bold text-sm leading-none block">MemoryAI</span>
-            <span className="text-[10px] text-muted-foreground leading-none">Nigeria</span>
+            <span className="text-[10px] text-muted-foreground leading-none">Voice archive · N-ATLAS</span>
           </div>
         </Link>
       </div>
@@ -173,10 +177,11 @@ function SidebarContent({ onNavigate }) {
           )
         )}
 
-              <SectionLabel>{t('analyticsNav') || 'Analytics'}</SectionLabel>
-        {ANALYTICS_NAV_KEYS.map((item) => (
-          <NavLink key={item.href} href={item.href} icon={item.icon} label={item.labelKey} onClick={onNavigate} />
+        <SectionLabel>{t('evaluationNav')}</SectionLabel>
+        {buildEvaluationNav(t).map((item) => (
+          <NavLink key={item.href} href={item.href} icon={item.icon} label={item.label} onClick={onNavigate} />
         ))}
+        <NavGroup item={buildMoreTools(t)} onClick={onNavigate} />
 
         {isAdmin && (
           <>
@@ -240,11 +245,11 @@ function BottomTabs() {
   const pathname = usePathname();
   const { t } = useTranslation();
   const tabs = [
-    { href: '/dashboard', icon: LayoutDashboard, labelKey: 'dashboard' },
-    { href: '/knowledge', icon: BookOpen,        labelKey: 'stories' },
-    { href: '/chat',      icon: MessageSquare,   labelKey: 'chat' },
-    { href: '/search',    icon: Search,          labelKey: 'search' },
-    { href: '/upload',    icon: Upload,          labelKey: 'upload' },
+    { href: '/dashboard',     icon: LayoutDashboard, labelKey: 'home' },
+    { href: '/contribute',    icon: Mic,             labelKey: 'contribute' },
+    { href: '/knowledge',     icon: BookOpen,        labelKey: 'libraryShort' },
+    { href: '/search',        icon: Search,          labelKey: 'search' },
+    { href: '/contributions', icon: User,            labelKey: 'mineShort' },
   ];
   return (
     <>

@@ -13,6 +13,7 @@ import api from '@/lib/api';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { LANGUAGE_COLORS } from '@/lib/constants';
+import { VoiceArchivePanel } from '@/components/memory/VoiceArchivePanel';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -98,8 +99,13 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
-      {/* Summary Stats */}
       <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
+        <VoiceArchivePanel />
+      </motion.div>
+
+      {/* Summary Stats (text archive) */}
+      <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Text archive</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {summaryCards.map((card, i) => (
             <Card key={card.label} className="border-border/50">

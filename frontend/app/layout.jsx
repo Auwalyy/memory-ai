@@ -20,11 +20,11 @@ export const metadata = {
     template: '%s | MemoryAI Nigeria',
   },
   description:
-    'An AI-powered platform preserving Nigeria\'s indigenous knowledge across Hausa, Yoruba, and Igbo languages using Google Gemma 4.',
-  keywords: ['Nigeria', 'indigenous knowledge', 'AI', 'Hausa', 'Yoruba', 'Igbo', 'cultural preservation', 'Gemma'],
+    'Voice-first preservation of Nigerian indigenous knowledge. Contributions in Hausa and English are processed by N-ATLAS and verified by people.',
+  keywords: ['Nigeria', 'indigenous knowledge', 'AI', 'Hausa', 'Yoruba', 'Igbo', 'cultural preservation', 'N-ATLAS', 'voice'],
   openGraph: {
     title: 'MemoryAI Nigeria',
-    description: 'Every Elder is a Library. Every Story Matters.',
+    description: 'Our Stories, Our Languages, Our Memory.',
     type: 'website',
   },
 };

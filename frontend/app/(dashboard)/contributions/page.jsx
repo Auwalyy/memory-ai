@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { User, Upload, Clock, CheckCircle, Sparkles, BookOpen, Eye } from 'lucide-react';
+import { User, Upload, Clock, CheckCircle, Sparkles, BookOpen, Eye, Mic, EyeOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,6 +12,8 @@ import Link from 'next/link';
 import api from '@/lib/api';
 import { LANGUAGE_COLORS } from '@/lib/constants';
 import { useAuth } from '@/hooks/useAuth';
+import { StatusBadge } from '@/components/memory/StatusBadge';
+import { languageLabel, typeLabel, formatDate } from '@/lib/knowledge';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 12 },
@@ -79,6 +81,32 @@ function UploadRow({ upload, i }) {
   );
 }
 
+function VoiceRow({ item, i }) {
+  return (
+    <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={i}>
+      <Link href={`/knowledge/${item._id}`}>
+        <Card className="border-border/50 hover:border-primary/20 transition-colors cursor-pointer">
+          <CardContent className="p-4 flex items-start gap-3">
+            <div className="flex-1 min-w-0">
+              <h3 className="font-medium text-sm truncate">{item.title}</h3>
+              <p className="text-xs text-muted-foreground">
+                {languageLabel(item.language)} · {typeLabel(item.knowledgeType)}
+                {item.location?.label ? ` · ${item.location.label}` : ''} · {formatDate(item.createdAt)}
+              </p>
+              <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{item.summary}</p>
+            </div>
+            <div className="flex flex-col items-end gap-1.5 shrink-0">
+              <StatusBadge status={item.verificationStatus} />
+              {item.isWithdrawn && <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><EyeOff className="w-3 h-3" /> withdrawn</span>}
+              {item.verificationStatus === 'AI_PROCESSED' && !item.isWithdrawn && <span className="text-xs text-primary">Needs your review</span>}
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
+    </motion.div>
+  );
+}
+
 export default function ContributionsPage() {
   const { user } = useAuth();
 
@@ -91,6 +119,12 @@ export default function ContributionsPage() {
     queryKey: ['my-uploads'],
     queryFn: () => api.get('/uploads/mine').then((r) => r.data),
   });
+
+  const { data: voiceData, isLoading: voiceLoading } = useQuery({
+    queryKey: ['my-voice-contributions'],
+    queryFn: () => api.get('/knowledge?mine=true&limit=100').then((r) => r.data),
+  });
+  const voiceItems = voiceData?.data || [];
 
   const stories = storiesData?.data || [];
   const uploads = uploadsData?.data || [];
@@ -140,14 +174,27 @@ export default function ContributionsPage() {
 
       {/* Tabs */}
       <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={2}>
-        <Tabs defaultValue="uploads">
+        <Tabs defaultValue="voice">
           <TabsList className="mb-4">
+            <TabsTrigger value="voice">Voice contributions ({voiceItems.length})</TabsTrigger>
             <TabsTrigger value="uploads">Uploads ({uploads.length})</TabsTrigger>
             <TabsTrigger value="published">Published ({published.length})</TabsTrigger>
             <TabsTrigger value="pending">Pending ({pending.length})</TabsTrigger>
             <TabsTrigger value="drafts">Drafts ({drafts.length})</TabsTrigger>
             <TabsTrigger value="ai">AI History ({aiAnalyzed.length})</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="voice" className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Open a contribution to review, edit, withdraw or delete it.
+            </p>
+            {voiceLoading
+              ? Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)
+              : voiceItems.length === 0
+                ? <EmptyState icon={Mic} text="You have not recorded any knowledge yet" link="/contribute" linkText="Contribute knowledge" />
+                : voiceItems.map((item, i) => <VoiceRow key={item._id} item={item} i={i} />)
+            }
+          </TabsContent>
 
           <TabsContent value="uploads" className="space-y-3">
             {uploadsLoading

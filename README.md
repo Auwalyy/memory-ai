@@ -1,8 +1,100 @@
-# MemoryAI Nigeria
+# MemoryAI
 
-> **Every Elder is a Library. Every Story Matters.**
+> **Our Stories, Our Languages, Our Memory.**
 
-An AI-powered Indigenous Knowledge Preservation Platform built for Nigeria, leveraging **Google Gemma 4** to preserve, understand, organize, and make accessible indigenous knowledge across Hausa, Yoruba, and Igbo languages.
+MemoryAI is a voice-first platform for preserving Nigerian indigenous knowledge. Elders, storytellers, artisans,
+teachers and community members record knowledge in their own language. **N-ATLAS** transcribes, translates and
+structures it, and people verify the result before it enters a searchable archive.
+
+> AI should preserve Nigerian knowledge, not invent Nigerian culture.
+
+---
+
+## NAIC MVP (PS2 — Voice-First Access)
+
+Primary language: **Hausa**. Secondary: **English / Nigerian English**. Yoruba and Igbo are wired through the
+pipeline and switch on once an ASR model is configured for them.
+
+### Pipeline
+
+```
+Hausa voice ─▶ N-ATLAS ASR ─▶ Hausa transcript ─▶ N-ATLAS LLM ─▶ translation + structured knowledge
+   ─▶ source-grounding check ─▶ human verification ─▶ Knowledge Library ─▶ search / explorer
+```
+
+- **N-ATLAS is the core dependency.** All calls go through `backend/src/core/natlas/natlas.service.js`
+  (`transcribeAudio`, `translateKnowledge`, `generateStructuredKnowledge`, `summarizeKnowledge`,
+  `answerFromRetrievedKnowledge`). Endpoints and keys come from env vars and never reach the frontend.
+- **No invented culture.** After extraction, any person, place, entity, cultural term or proverb that does not appear
+  in the original transcript is removed and recorded in the item's provenance.
+- **Retrieval first.** Search retrieves stored contributions (MongoDB text index + embeddings) and only then asks
+  N-ATLAS to summarise *those* sources. With no matching sources, no answer is generated. Every answer shows
+  "Based on X community contributions" with links to the sources.
+- **Provenance.** Each record keeps its recording, consent statement, location, recording date, per-step models and
+  timings, grounding results, and review history. Status flow: `PENDING → AI_PROCESSED → HUMAN_REVIEWED → VERIFIED`.
+- **Privacy.** Explicit consent before recording; contributors can stay anonymous, edit, withdraw or delete
+  (deleting removes the recording too).
+
+### Running N-ATLAS
+
+N-ATLAS has no public hosted API. `natlas-gateway/` is a small FastAPI service that serves `NCAIR1/Hausa-ASR` and
+`NCAIR1/N-ATLaS` behind OpenAI-style endpoints — see [natlas-gateway/README.md](natlas-gateway/README.md). Then set in
+`backend/.env`:
+
+```
+NATLAS_ASR_ENDPOINT=http://localhost:8080/v1/audio/transcriptions
+NATLAS_LLM_ENDPOINT=http://localhost:8080/v1/chat/completions
+NATLAS_API_KEY=<same as NATLAS_GATEWAY_API_KEY>
+NATLAS_MODEL=NCAIR1/N-ATLaS
+```
+
+Recordings go to Cloudinary when it is configured, otherwise to `backend/uploads/audio` (served at `/media/audio`).
+On ephemeral hosts (e.g. Render) configure Cloudinary so recordings survive restarts.
+
+### Pages
+
+| Route | Purpose |
+| --- | --- |
+| `/contribute` → `/contribute/processing` | Choose language & type, consent, record, watch N-ATLAS process it, rate fidelity |
+| `/knowledge`, `/knowledge/[id]` | Knowledge Library and record view (transcript, translation, structure, provenance, reviews) |
+| `/search` | Questions answered from retrieved community sources, with citations |
+| `/explore` | Location → knowledge type → records, plus topics, people, proverbs, crafts |
+| `/verify` | Contributor review queue; moderator verification queue |
+| `/admin/analytics` | Validation dashboard + CSV/JSON export of per-session records |
+| `/demo` | **MemoryAI — N-ATLAS Voice Preservation Demo**: the whole pipeline on one screen for judges |
+| `/contributions` | My Contributions (edit, withdraw, delete) |
+
+The earlier story/proverb tools remain under **More tools** (`/archive`, `/stories`, `/proverbs`, `/upload`, `/chat`, …).
+
+### API (prefix `/api/v1`)
+
+| Method & path | Auth | Description |
+| --- | --- | --- |
+| `POST /knowledge/upload` | user | multipart `audio` (or `text`), `language`, `knowledgeType`, `consent=true`, `town`, `state`, `community`, `isAnonymous`, `durationSec`, `sessionId` |
+| `POST /knowledge/process` | owner | `{ contributionId }` → starts the N-ATLAS pipeline, returns a job |
+| `GET /knowledge/jobs/:id` | owner | pipeline progress (+ the item when done) |
+| `GET /knowledge` | public | library (`language`, `knowledgeType`, `status`, `q`, `location`, `topic`, `person`, `place`, `mine=true`) |
+| `GET /knowledge/:id` | public* | item + provenance + reviews (*unpublished: owner/moderator only) |
+| `POST /knowledge/:id/review` | owner/moderator | `{ fidelityScore 1-5, correctionText?, userFeedback? }` |
+| `POST /knowledge/:id/verify` | moderator | `{ decision: verify\|reject, fidelityScore, correctionText? }` |
+| `PATCH /knowledge/:id` · `POST /knowledge/:id/withdraw` · `DELETE /knowledge/:id` | owner | edit / withdraw / delete |
+| `GET /knowledge/search?q=` | public | retrieval + optional N-ATLAS summary (`answer=false` for sources only) |
+| `GET /knowledge/explore` | public | relationship tree and facets |
+| `POST /natlas/transcribe` · `POST /natlas/process` · `GET /natlas/status` | user / public | direct N-ATLAS access for testing |
+| `GET /analytics` · `GET /analytics/export?format=csv\|json` | user · moderator | evaluation metrics and validation export |
+
+Export columns: `sessionId, language, knowledgeType, processingSuccess, transcriptionSuccess, extractionSuccess,
+completionTimeMs` (+ per-step timings and models), `fidelityScore, correctionRequired, userFeedback, verificationStatus`.
+
+### Demo script (3–5 min)
+
+1. Open `/demo`. Point out the N-ATLAS status line (ASR + LLM model IDs).
+2. Choose **Hausa** and **Tradition**, enter *Kano*, tick consent, and record a real speaker.
+3. Watch steps 2–4 complete: transcript, translation, extracted concepts and proverbs, confidence notes.
+4. The speaker rates fidelity (1–5) and adds a correction if needed → **Published**.
+5. Open the record: audio, provenance, models used, timings, grounding check.
+6. In `/search`, ask *"What traditional marriage practices are mentioned in Kano?"* — note "Based on N community contributions" and open a cited source.
+7. Finish on `/explore` and `/admin/analytics` (fidelity score, ASR success rate, export).
 
 ---
 

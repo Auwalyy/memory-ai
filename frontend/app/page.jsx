@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { ArrowRight, BookOpen, Mic, Globe, Sparkles, Users, Archive } from 'lucide-react';
+import { ArrowRight, Mic, Archive, Cpu, ShieldCheck, UserCheck, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -17,42 +17,42 @@ const fadeUp = {
 
 const features = [
   {
-    icon: Sparkles,
-    title: 'Gemma 4 Intelligence',
-    description: 'Google Gemma 4 understands cultural context, extracts wisdom, and connects stories across languages.',
-  },
-  {
-    icon: Globe,
-    title: 'Hausa · Yoruba · Igbo',
-    description: 'Native understanding of Nigeria\'s three major indigenous languages with full cultural nuance.',
-  },
-  {
     icon: Mic,
-    title: 'Voice & Document Upload',
-    description: 'Upload recordings, manuscripts, images, and documents. AI extracts and preserves the knowledge.',
+    title: 'Speak in your own language',
+    description: 'Elders, storytellers, artisans and teachers record knowledge by voice — starting with Hausa and Nigerian English.',
   },
   {
-    icon: BookOpen,
-    title: 'Educational Content',
-    description: 'Automatically generate lesson plans, quizzes, and children\'s stories from preserved knowledge.',
+    icon: Cpu,
+    title: 'N-ATLAS understands it',
+    description: "Nigeria's N-ATLAS models transcribe the recording, translate it and structure the people, places, practices and proverbs it contains.",
   },
   {
-    icon: Users,
-    title: 'Community Contributions',
-    description: 'Families, elders, and communities contribute knowledge that lives forever.',
+    icon: ShieldCheck,
+    title: 'Grounded, never invented',
+    description: 'Anything the AI extracts that is not in the recording is removed. MemoryAI preserves what people said — it does not generate culture.',
+  },
+  {
+    icon: UserCheck,
+    title: 'People verify it',
+    description: 'Contributors rate how faithfully N-ATLAS captured their words, giving every record a Cultural Fidelity score. Moderators verify.',
+  },
+  {
+    icon: Search,
+    title: 'Search real sources',
+    description: 'Questions are answered from community contributions only, with the number of sources shown and every source one click away.',
   },
   {
     icon: Archive,
-    title: 'Living Knowledge Archive',
-    description: 'Not just storage — a searchable, conversational, intelligent knowledge network.',
+    title: 'Provenance on every record',
+    description: 'Each record keeps its original audio, consent, location, processing details and review history. Contributors can stay anonymous or withdraw.',
   },
 ];
 
 const stats = [
-  { value: '500+', label: 'Nigerian Languages' },
-  { value: '3', label: 'Core Languages Supported' },
-  { value: 'Gemma 4', label: 'AI Intelligence Layer' },
-  { value: '∞', label: 'Stories to Preserve' },
+  { value: 'Hausa', label: 'First language, voice-first' },
+  { value: 'N-ATLAS', label: 'Core language technology' },
+  { value: '1–5', label: 'Cultural Fidelity rating per record' },
+  { value: 'Every record', label: 'Linked to its original source' },
 ];
 
 export default function HomePage() {
@@ -86,7 +86,7 @@ export default function HomePage() {
               🇳🇬 Hausa · Yoruba · Igbo · English
             </Badge>
             <Badge className="px-4 py-1.5 text-sm font-medium gradient-brand text-white border-0">
-              Powered by Google Gemma 4
+              Powered by N-ATLAS
             </Badge>
           </motion.div>
 
@@ -121,8 +121,8 @@ export default function HomePage() {
             custom={2}
             className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed"
           >
-            MemoryAI Nigeria uses Google Gemma 4 to preserve, understand, and make accessible
-            Nigeria&apos;s indigenous wisdom — starting with Hausa, expanding to Yoruba, Igbo, and beyond.
+            Our Stories, Our Languages, Our Memory. Nigerians speak their knowledge, N-ATLAS understands their
+            language, MemoryAI structures it, people verify it — and future generations can find it.
           </motion.p>
 
           <motion.div
@@ -178,10 +178,10 @@ export default function HomePage() {
             className="text-center mb-16"
           >
             <h2 className="font-serif text-4xl font-bold mb-4">
-              Gemma 4 is the Intelligence Layer
+              How MemoryAI works
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Not just storage. Not just translation. Gemma understands, connects, and teaches.
+              AI should preserve Nigerian knowledge, not invent Nigerian culture.
             </p>
           </motion.div>
 
@@ -196,8 +196,8 @@ export default function HomePage() {
                 custom={i * 0.5}
                 className="group p-6 rounded-2xl border border-border/50 bg-card hover:border-primary/30 hover:shadow-lg transition-all duration-300"
               >
-                <div className="w-10 h-10 rounded-xl gradient-brand flex items-center justify-center mb-4">
-                  <feature.icon className="w-5 h-5 text-white" />
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
+                  <feature.icon className="w-5 h-5 text-primary" />
                 </div>
                 <h3 className="font-semibold text-lg mb-2">{feature.title}</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">{feature.description}</p>
@@ -214,7 +214,7 @@ export default function HomePage() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className="max-w-3xl mx-auto text-center p-12 rounded-3xl gradient-brand text-white"
+          className="max-w-3xl mx-auto text-center p-12 rounded-3xl bg-primary text-white"
         >
           <h2 className="font-serif text-4xl font-bold mb-4">
             Preserving Nigerian Indigenous Knowledge, Starting with Hausa
@@ -227,7 +227,7 @@ export default function HomePage() {
           </p>
           <Link href="/register">
             <Button size="lg" variant="secondary" className="px-8 h-12 text-base gap-2">
-              Begin Your Contribution
+              Record Your First Contribution
               <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>

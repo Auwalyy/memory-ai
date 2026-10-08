@@ -204,7 +204,6 @@ export function AudioRecorder({ strings, onChange, disabled = false, compact = f
               <RotateCcw /> {strings.reRecord}
             </Button>
           </div>
-          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
           <audio controls src={audioUrl} className="w-full" />
         </div>
       )}
