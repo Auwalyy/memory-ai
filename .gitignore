@@ -47,3 +47,6 @@ Thumbs.db
 /backend/uploads/
 /frontend/uploads/
 temp/
+
+# Downloaded N-ATLAS model weights
+natlas-gateway/models/

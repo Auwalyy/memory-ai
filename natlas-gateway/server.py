@@ -8,9 +8,11 @@ the MemoryAI backend (NAtlasService) can call them:
   POST /v1/chat/completions       OpenAI chat format          -> OpenAI chat response
   GET  /health
 
-Models (Hugging Face, gated: accept the licence and set HF_TOKEN):
+Models:
   ASR  NCAIR1/Hausa-ASR  (Whisper-small fine-tuned for Hausa)
   LLM  NCAIR1/N-ATLaS    (Llama-3 8B fine-tuned for Hausa, Yoruba, Igbo, English)
+       loaded from the Hugging Face Storage Bucket in LLM_BUCKET when set
+       (e.g. Auwalyyy/N-ATLaS-bucket), otherwise from the gated NCAIR1 repo (needs HF_TOKEN).
 
 Run:  uvicorn server:app --host 0.0.0.0 --port 8080
 """
@@ -25,8 +27,14 @@ from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadF
 from pydantic import BaseModel
 
 API_KEY = os.getenv("NATLAS_GATEWAY_API_KEY", "")
+# Name reported to the backend (stored in provenance)
 LLM_MODEL_ID = os.getenv("LLM_MODEL", "NCAIR1/N-ATLaS")
+# Optional Hugging Face Storage Bucket holding the N-ATLaS weights, downloaded once to LLM_LOCAL_DIR
+LLM_BUCKET = os.getenv("LLM_BUCKET", "")
+LLM_LOCAL_DIR = os.getenv("LLM_LOCAL_DIR", os.path.join(os.path.dirname(__file__), "models", "N-ATLaS"))
 LOAD_LLM = os.getenv("LOAD_LLM", "1") == "1"
+# Load the LLM at startup so the first request does not exceed the backend timeout
+PRELOAD_LLM = os.getenv("PRELOAD_LLM", "1") == "1"
 
 # language -> ASR model. Override or add with ASR_MODEL_<LANGUAGE>, e.g. ASR_MODEL_YORUBA.
 ASR_MODELS = {"hausa": "NCAIR1/Hausa-ASR"}
@@ -75,13 +83,26 @@ def get_llm():
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
-        _llm["tokenizer"] = AutoTokenizer.from_pretrained(LLM_MODEL_ID)
-        _llm["model"] = AutoModelForCausalLM.from_pretrained(
-            LLM_MODEL_ID,
-            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-            device_map="auto",
-        )
+        source = LLM_MODEL_ID
+        if LLM_BUCKET:
+            from bucket import download_bucket
+
+            source = download_bucket(LLM_BUCKET, LLM_LOCAL_DIR)
+
+        if torch.cuda.is_available():
+            # Weights are stored in bfloat16; fall back to float16 on older GPUs
+            dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+        else:
+            dtype = torch.float32
+        _llm["tokenizer"] = AutoTokenizer.from_pretrained(source)
+        _llm["model"] = AutoModelForCausalLM.from_pretrained(source, torch_dtype=dtype, device_map="auto")
     return _llm["tokenizer"], _llm["model"]
+
+
+@app.on_event("startup")
+def preload():
+    if LOAD_LLM and PRELOAD_LLM:
+        get_llm()
 
 
 @app.get("/health")
@@ -90,6 +111,7 @@ def health():
         "status": "ok",
         "asr_models": ASR_MODELS,
         "llm_model": LLM_MODEL_ID if LOAD_LLM else None,
+        "llm_source": (f"bucket:{LLM_BUCKET}" if LLM_BUCKET else LLM_MODEL_ID) if LOAD_LLM else None,
         "loaded": {"asr": list(_asr_pipelines), "llm": bool(_llm)},
     }
 

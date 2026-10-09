@@ -12,7 +12,9 @@ endpoints that the backend's `NAtlasService` calls.
 
 ## Run
 
-Both models are gated on Hugging Face: accept the licence on each model page, then create an access token.
+The N-ATLaS LLM weights (16 GB, bfloat16) are mirrored in the project's Hugging Face Storage Bucket
+[`Auwalyyy/N-ATLaS-bucket`](https://huggingface.co/buckets/Auwalyyy/N-ATLaS-bucket). With `LLM_BUCKET` set, the
+gateway downloads them once into `models/N-ATLaS/` (git-ignored, resumable), then loads them at startup.
 
 ```bash
 cd natlas-gateway
@@ -20,10 +22,15 @@ python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\act
 pip install -r requirements.txt
 # ffmpeg must be on PATH (decodes browser webm/ogg recordings)
 
-export HF_TOKEN=hf_xxx
+export LLM_BUCKET=Auwalyyy/N-ATLaS-bucket
 export NATLAS_GATEWAY_API_KEY=some-long-random-string   # optional but recommended
+export HF_TOKEN=hf_xxx   # for NCAIR1/Hausa-ASR (gated); also used if the bucket is made private
 uvicorn server:app --host 0.0.0.0 --port 8080
 ```
+
+To fetch the weights ahead of time (e.g. while building a GPU image): `python bucket.py Auwalyyy/N-ATLaS-bucket models/N-ATLaS`.
+Without `LLM_BUCKET`, the LLM is loaded from the gated `NCAIR1/N-ATLaS` repo instead. Startup takes a few minutes
+while the model loads (`PRELOAD_LLM=0` defers it to the first request, which will then time out the backend once).
 
 Hardware: the ASR model runs on CPU. The 8B LLM needs a GPU with ~16 GB VRAM in
 fp16 (it will run on CPU, slowly). To run ASR here and the LLM elsewhere, set
@@ -43,7 +50,8 @@ NATLAS_MODEL=NCAIR1/N-ATLaS
 Any server with an OpenAI-compatible `/v1/chat/completions` works for the LLM, e.g. vLLM:
 
 ```bash
-vllm serve NCAIR1/N-ATLaS --max-model-len 8192
+python bucket.py Auwalyyy/N-ATLaS-bucket models/N-ATLaS
+vllm serve models/N-ATLaS --served-model-name NCAIR1/N-ATLaS --max-model-len 8192
 # NATLAS_LLM_ENDPOINT=http://<host>:8000/v1/chat/completions
 ```
 
